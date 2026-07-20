@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     if (!refreshToken) return NextResponse.json({ message: 'No refresh token' }, { status: 401 })
 
     const refreshPath = WEB_ROLE === 'ADMIN'
-      ? `${BACKEND_URL}/admin-api/AuthAdmin/org/global/action/RefreshToken`
+      ? `${BACKEND_URL}/admin-api/AuthAdmin/org/global/action/Refresh`
       : `${BACKEND_URL}/api/OrgUser/org/global/action/RefreshToken`
 
     const response = await fetch(refreshPath, {
@@ -18,7 +18,8 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({ RefreshToken: refreshToken }),
     })
 
-    const data = await response.json()
+    let data: any = {}
+    try { data = await response.json() } catch { /* non-JSON body */ }
 
     if (!response.ok) {
       const res = NextResponse.json({ message: 'Refresh failed' }, { status: 401 })

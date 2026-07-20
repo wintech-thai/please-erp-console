@@ -16,8 +16,9 @@ import { useBrand } from '@/context/BrandContext'
 const COMING_SOON_ITEMS = [
   { key: 'businessSetup', href: '/business-setup', label: { th: 'ตั้งค่าธุรกิจ', en: 'Business Setup' } },
   { key: 'reportAndAnalytic', href: '/report-analytic', label: { th: 'รายงาน & วิเคราะห์', en: 'Report & Analytic' } },
-  { key: 'setting', href: '/setting', label: { th: 'ตั้งค่า', en: 'Setting' } },
 ]
+
+const SETTING_ITEM = { key: 'setting', href: '/setting', label: { th: 'Support & ตั้งค่า', en: 'Support & Setting' } }
 
 export default function Navbar() {
   const pathname = usePathname()
@@ -48,10 +49,11 @@ export default function Navbar() {
       <div className="flex items-center h-14 px-4 gap-4">
         {/* Brand */}
         <Link href="/overview" className="flex items-center gap-2.5 flex-shrink-0">
-          {logoUrl
-            ? <img src={logoUrl} alt={displayName} className="w-9 h-9 object-contain" />
-            : <ErpLogoIcon className="w-9 h-9" />
-          }
+          <img
+            src={logoUrl || '/img/please-erp.svg'}
+            alt={displayName}
+            className="w-9 h-9 object-contain"
+          />
           <div className="hidden sm:block">
             <p className="text-white font-bold text-sm leading-tight">{displayName}</p>
             <p className="text-primary-200 text-xs leading-tight">ERP</p>
@@ -73,6 +75,10 @@ export default function Navbar() {
           ))}
           <Link href="/administrator/users" className={clsx('flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors', pathname.startsWith('/administrator') ? 'bg-white/20 text-white' : 'text-white hover:bg-white/15')}>
             {t.nav.administrator}
+          </Link>
+          <Link href={SETTING_ITEM.href} className={clsx('flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors', pathname.startsWith(SETTING_ITEM.href) ? 'bg-white/20 text-white' : 'text-white hover:bg-white/15')}>
+            {lang === 'th' ? SETTING_ITEM.label.th : SETTING_ITEM.label.en}
+            <span className="text-[10px] bg-white/15 text-white/70 px-1.5 py-0.5 rounded-full leading-tight">{t.nav.comingSoon}</span>
           </Link>
         </nav>
 
@@ -124,11 +130,6 @@ export default function Navbar() {
                   </div>
 
                   <div className="border-t border-gray-100 mt-1 pt-1">
-                    {/* Dev Hub link */}
-                    <a href="https://dev-hubs.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-primary-600 hover:bg-primary-50 transition-colors">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                      Powered by Dev Hub
-                    </a>
                     <button onClick={handleLogout} disabled={loggingOut} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50">
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
                       {t.nav.logout}
@@ -166,6 +167,10 @@ export default function Navbar() {
           ))}
           <Link href="/administrator/users" onClick={() => setMobileMenuOpen(false)} className={clsx('flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors', pathname.startsWith('/administrator') ? 'bg-white/20 text-white' : 'text-white hover:bg-white/15')}>
             {t.nav.administrator}
+          </Link>
+          <Link href={SETTING_ITEM.href} onClick={() => setMobileMenuOpen(false)} className={clsx('flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors', pathname.startsWith(SETTING_ITEM.href) ? 'bg-white/20 text-white' : 'text-white hover:bg-white/15')}>
+            <span>{lang === 'th' ? SETTING_ITEM.label.th : SETTING_ITEM.label.en}</span>
+            <span className="text-xs bg-white/15 text-white/70 px-1.5 py-0.5 rounded-full">{t.nav.comingSoon}</span>
           </Link>
         </nav>
       )}

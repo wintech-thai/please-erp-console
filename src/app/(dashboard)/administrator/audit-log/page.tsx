@@ -68,6 +68,7 @@ function calculateInterval(tr: TimeRangeValue): string {
 // ── sessionStorage helpers ────────────────────────────────────────────────────
 
 const SS_KEY = 'auditLog:timeRange'
+const SS_HIGHLIGHT_KEY = 'auditLog:highlightedId'
 
 function saveTimeRange(tr: TimeRangeValue) {
   try { sessionStorage.setItem(SS_KEY, JSON.stringify(tr)) } catch { /* ignore */ }
@@ -131,7 +132,14 @@ function AuditLogContent() {
   const [chartInterval, setChartInterval] = useState('30m')
   const [selectedLog, setSelectedLog] = useState<AuditLogDocument | null>(null)
   const [selectedIndex, setSelectedIndex] = useState(-1)
-  const [highlightedId, setHighlightedId] = useState<string>('')
+  const [highlightedId, setHighlightedId] = useState<string>(
+    () => (typeof window !== 'undefined' ? sessionStorage.getItem(SS_HIGHLIGHT_KEY) || '' : '')
+  )
+
+  const selectHighlight = (id: string) => {
+    setHighlightedId(id)
+    sessionStorage.setItem(SS_HIGHLIGHT_KEY, id)
+  }
 
   const getOrgId = () => typeof window !== 'undefined' ? localStorage.getItem('orgId') || '' : ''
 
@@ -234,14 +242,14 @@ function AuditLogContent() {
     setAndSaveTimeRange({ type: 'relative', value: '24h' })
   }
 
-  const handleRowClick = (log: AuditLogDocument) => { setHighlightedId(log.id) }
+  const handleRowClick = (log: AuditLogDocument) => { selectHighlight(log.id) }
   const handleOpenFlyout = (log: AuditLogDocument, idx: number) => {
-    setHighlightedId(log.id); setSelectedLog(log); setSelectedIndex(idx)
+    selectHighlight(log.id); setSelectedLog(log); setSelectedIndex(idx)
   }
   const handleCloseFlyout = () => { setSelectedLog(null); setSelectedIndex(-1) }
   const handleNavigate = (idx: number) => {
     if (idx >= 0 && idx < logs.length) {
-      setHighlightedId(logs[idx].id); setSelectedLog(logs[idx]); setSelectedIndex(idx)
+      selectHighlight(logs[idx].id); setSelectedLog(logs[idx]); setSelectedIndex(idx)
     }
   }
 
