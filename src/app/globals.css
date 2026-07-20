@@ -2,19 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Default primary palette — Orange (ORANGE_DEFAULT). Overridden via data-theme attribute. */
+/* Default primary palette — Teal (TEAL_MODERN). Overridden via data-theme attribute. */
 :root {
-  --color-primary-50:  255 248 240;
-  --color-primary-100: 254 238 221;
-  --color-primary-200: 253 216 180;
-  --color-primary-300: 251 185 127;
-  --color-primary-400: 248 145 70;
-  --color-primary-500: 240 107 30;
-  --color-primary-600: 216 85 16;
-  --color-primary-700: 184 68 13;
-  --color-primary-800: 150 55 11;
-  --color-primary-900: 118 44 9;
-  --color-primary-950: 74 27 5;
+  --color-primary-50:  240 253 250;
+  --color-primary-100: 204 251 241;
+  --color-primary-200: 153 246 228;
+  --color-primary-300: 94 234 212;
+  --color-primary-400: 45 212 191;
+  --color-primary-500: 20 184 166;
+  --color-primary-600: 13 148 136;
+  --color-primary-700: 15 118 110;
+  --color-primary-800: 17 94 89;
+  --color-primary-900: 19 78 74;
+  --color-primary-950: 4 47 46;
 }
 :root[data-theme="BLUE_OCEAN"] {
   --color-primary-50:  239 246 255;
@@ -146,8 +146,8 @@ body {
 
 .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: #fed7aa; border-radius: 9999px; }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #f06b1e; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #99f6e4; border-radius: 9999px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #0d9488; }
 
 @layer components {
   .btn-primary {

@@ -55,7 +55,7 @@ export const THEMES: Record<ThemeName, Theme> = {
   },
 }
 
-export const DEFAULT_THEME: ThemeName = 'ORANGE_DEFAULT'
+export const DEFAULT_THEME: ThemeName = 'TEAL_MODERN'
 
 export function applyTheme(name: ThemeName) {
   const theme = THEMES[name] ?? THEMES[DEFAULT_THEME]
