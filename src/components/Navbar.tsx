@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useLang } from '@/context/LanguageContext'
 import { clearAuthData } from '@/lib/axios'
 import { Lang } from '@/lib/translations'
@@ -17,7 +17,9 @@ const COMING_SOON_ITEMS = [
   { key: 'reportAndAnalytic', href: '/report-analytic', label: { th: 'รายงาน & วิเคราะห์', en: 'Report & Analytic' } },
 ]
 
-const TENANT_ITEM = { key: 'tenant', href: '/business-setup/tenant', label: { th: 'Tenant', en: 'Tenant' } }
+const BUSINESS_SETUP_ITEMS = [
+  { key: 'tenant', href: '/business-setup/tenant', label: { th: 'Tenant', en: 'Tenant' } },
+]
 
 const SETTING_ITEM = { key: 'setting', href: '/setting', label: { th: 'Support & ตั้งค่า', en: 'Support & Setting' } }
 
@@ -31,6 +33,15 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [modal, setModal] = useState<'profile' | 'changePassword' | null>(null)
   const [username, setUsername] = useState('User')
+  const [bsOpen, setBsOpen] = useState(false)
+  const bsRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!bsOpen) return
+    const handler = (e: MouseEvent) => { if (!bsRef.current?.contains(e.target as Node)) setBsOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [bsOpen])
 
   useEffect(() => { setUsername(localStorage.getItem('username') || 'User') }, [])
 
@@ -68,13 +79,32 @@ export default function Navbar() {
           <Link href="/overview" className={clsx('flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors', pathname === '/overview' || pathname.startsWith('/overview/') ? 'bg-white/20 text-white' : 'text-white hover:bg-white/15')}>
             {t.nav.overview}
           </Link>
-          <Link href={TENANT_ITEM.href} className={clsx('flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors', pathname.startsWith('/business-setup') ? 'bg-white/20 text-white' : 'text-white hover:bg-white/15')}>
-            {lang === 'th' ? TENANT_ITEM.label.th : TENANT_ITEM.label.en}
-          </Link>
+          <div ref={bsRef} className="relative">
+            <button
+              onClick={() => setBsOpen(v => !v)}
+              className={clsx('flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors', pathname.startsWith('/business-setup') ? 'bg-white/20 text-white' : 'text-white hover:bg-white/15')}
+            >
+              {t.nav.businessSetup}
+              <svg className={clsx('w-3.5 h-3.5 opacity-70 transition-transform', bsOpen && 'rotate-180')} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </button>
+            {bsOpen && (
+              <div className="absolute left-0 top-full mt-1.5 w-44 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-50">
+                {BUSINESS_SETUP_ITEMS.map(item => (
+                  <Link
+                    key={item.key}
+                    href={item.href}
+                    onClick={() => setBsOpen(false)}
+                    className={clsx('flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors', pathname.startsWith(item.href) ? 'text-primary-700 font-semibold bg-primary-50' : 'text-gray-700 hover:bg-gray-50')}
+                  >
+                    {lang === 'th' ? item.label.th : item.label.en}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
           {COMING_SOON_ITEMS.map((item) => (
             <Link key={item.key} href={item.href} className={clsx('flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors', pathname.startsWith(item.href) ? 'bg-white/20 text-white' : 'text-white hover:bg-white/15')}>
               {lang === 'th' ? item.label.th : item.label.en}
-              <span className="text-[10px] bg-white/15 text-white/70 px-1.5 py-0.5 rounded-full leading-tight">{t.nav.comingSoon}</span>
             </Link>
           ))}
           <Link href="/administrator/users" className={clsx('flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors', pathname.startsWith('/administrator') ? 'bg-white/20 text-white' : 'text-white hover:bg-white/15')}>
@@ -82,7 +112,6 @@ export default function Navbar() {
           </Link>
           <Link href={SETTING_ITEM.href} className={clsx('flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors', pathname.startsWith(SETTING_ITEM.href) ? 'bg-white/20 text-white' : 'text-white hover:bg-white/15')}>
             {lang === 'th' ? SETTING_ITEM.label.th : SETTING_ITEM.label.en}
-            <span className="text-[10px] bg-white/15 text-white/70 px-1.5 py-0.5 rounded-full leading-tight">{t.nav.comingSoon}</span>
           </Link>
         </nav>
 
@@ -103,9 +132,9 @@ export default function Navbar() {
 
           {/* User menu */}
           <div className="relative">
-            <button onClick={() => setUserMenuOpen((v) => !v)} className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-white hover:bg-white/15 transition-colors min-w-0 max-w-[180px]">
+            <button onClick={() => setUserMenuOpen((v) => !v)} className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-white hover:bg-white/15 transition-colors min-w-0">
               <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-xs uppercase flex-shrink-0">{username.charAt(0)}</div>
-              <span className="hidden sm:block text-sm font-medium truncate">{username}</span>
+              <span className="hidden sm:block text-sm font-medium truncate max-w-[200px]">{username}</span>
               <svg className="w-3.5 h-3.5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
             </button>
 
@@ -163,21 +192,29 @@ export default function Navbar() {
           <Link href="/overview" onClick={() => setMobileMenuOpen(false)} className={clsx('flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors', pathname === '/overview' ? 'bg-white/20 text-white' : 'text-white hover:bg-white/15')}>
             {t.nav.overview}
           </Link>
-          <Link href={TENANT_ITEM.href} onClick={() => setMobileMenuOpen(false)} className={clsx('flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors', pathname.startsWith('/business-setup') ? 'bg-white/20 text-white' : 'text-white hover:bg-white/15')}>
-            {lang === 'th' ? TENANT_ITEM.label.th : TENANT_ITEM.label.en}
-          </Link>
+          <div>
+            <p className="px-3 py-1 text-xs font-semibold text-white/50 uppercase tracking-widest">{t.nav.businessSetup}</p>
+            {BUSINESS_SETUP_ITEMS.map(item => (
+              <Link
+                key={item.key}
+                href={item.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className={clsx('flex items-center gap-2 pl-6 pr-3 py-2.5 rounded-lg text-sm font-medium transition-colors', pathname.startsWith(item.href) ? 'bg-white/20 text-white' : 'text-white hover:bg-white/15')}
+              >
+                {lang === 'th' ? item.label.th : item.label.en}
+              </Link>
+            ))}
+          </div>
           {COMING_SOON_ITEMS.map((item) => (
-            <Link key={item.key} href={item.href} onClick={() => setMobileMenuOpen(false)} className={clsx('flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors', pathname.startsWith(item.href) ? 'bg-white/20 text-white' : 'text-white hover:bg-white/15')}>
-              <span>{lang === 'th' ? item.label.th : item.label.en}</span>
-              <span className="text-xs bg-white/15 text-white/70 px-1.5 py-0.5 rounded-full">{t.nav.comingSoon}</span>
+            <Link key={item.key} href={item.href} onClick={() => setMobileMenuOpen(false)} className={clsx('flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-colors', pathname.startsWith(item.href) ? 'bg-white/20 text-white' : 'text-white hover:bg-white/15')}>
+              {lang === 'th' ? item.label.th : item.label.en}
             </Link>
           ))}
           <Link href="/administrator/users" onClick={() => setMobileMenuOpen(false)} className={clsx('flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors', pathname.startsWith('/administrator') ? 'bg-white/20 text-white' : 'text-white hover:bg-white/15')}>
             {t.nav.administrator}
           </Link>
-          <Link href={SETTING_ITEM.href} onClick={() => setMobileMenuOpen(false)} className={clsx('flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors', pathname.startsWith(SETTING_ITEM.href) ? 'bg-white/20 text-white' : 'text-white hover:bg-white/15')}>
-            <span>{lang === 'th' ? SETTING_ITEM.label.th : SETTING_ITEM.label.en}</span>
-            <span className="text-xs bg-white/15 text-white/70 px-1.5 py-0.5 rounded-full">{t.nav.comingSoon}</span>
+          <Link href={SETTING_ITEM.href} onClick={() => setMobileMenuOpen(false)} className={clsx('flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-colors', pathname.startsWith(SETTING_ITEM.href) ? 'bg-white/20 text-white' : 'text-white hover:bg-white/15')}>
+            {lang === 'th' ? SETTING_ITEM.label.th : SETTING_ITEM.label.en}
           </Link>
         </nav>
       )}

@@ -202,6 +202,7 @@ export interface AddMerchantPayload {
     Name?: string
     ContactEmail?: string
     ContactPhone?: string
+    Tags?: string
     PayinFeePct?: number | string
     PayoutFeePct?: number | string
     PayinMinAmount?: number | string
@@ -221,6 +222,7 @@ export interface UpdateMerchantPayload {
   Name?: string
   ContactEmail?: string
   ContactPhone?: string
+  Tags?: string
   PayinFeePct?: number | string
   PayoutFeePct?: number | string
   PayinMinAmount?: number | string

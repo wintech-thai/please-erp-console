@@ -1,12 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { tenantApi } from '@/lib/api/tenant.api'
 import { toast } from 'sonner'
 import { ChevronLeft, X } from 'lucide-react'
 import clsx from 'clsx'
 import { useLang } from '@/context/LanguageContext'
+import { useUnsavedChanges } from '@/hooks/useUnsavedChanges'
+import LeaveConfirmModal from '@/components/LeaveConfirmModal'
 
 export default function TenantCreatePage() {
   const { t } = useLang()
@@ -19,6 +21,14 @@ export default function TenantCreatePage() {
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
   const [saving, setSaving] = useState(false)
+
+  const isDirty = useMemo(
+    () => !!(orgCustomId || orgName || contactEmail || contactPhone || tags.length || tagInput),
+    [orgCustomId, orgName, contactEmail, contactPhone, tags, tagInput]
+  )
+  const { showConfirm, guardNavigation, confirmLeave, cancelLeave } = useUnsavedChanges(isDirty)
+
+  const goBack = () => guardNavigation(() => router.push('/business-setup/tenant'))
 
   const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if ((e.key === 'Enter' || e.key === ',') && tagInput.trim()) {
@@ -49,6 +59,7 @@ export default function TenantCreatePage() {
           Name: orgName.trim(),
           ContactEmail: contactEmail.trim() || undefined,
           ContactPhone: contactPhone.trim() || undefined,
+          Tags: finalTags.length ? finalTags.join(',') : undefined,
         },
       })
       toast.success(t.tenant.createdSuccess)
@@ -70,9 +81,11 @@ export default function TenantCreatePage() {
 
   return (
     <div className="flex flex-col overflow-hidden h-[calc(100dvh-5rem)] sm:h-[calc(100dvh-6.5rem)]">
+      {showConfirm && <LeaveConfirmModal onConfirm={confirmLeave} onCancel={cancelLeave} />}
+
       <div className="flex-none flex items-center gap-3 mb-6">
         <button
-          onClick={() => router.push('/business-setup/tenant')}
+          onClick={goBack}
           className="p-2 rounded-lg text-gray-500 hover:bg-gray-200 transition-colors"
         >
           <ChevronLeft className="w-5 h-5" />
@@ -149,7 +162,7 @@ export default function TenantCreatePage() {
         <div className="flex-none -mx-3 sm:-mx-6 px-4 sm:px-8 py-4 flex items-center justify-end gap-3 bg-white border-t border-gray-100 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
           <button
             type="button"
-            onClick={() => router.push('/business-setup/tenant')}
+            onClick={goBack}
             className={cancelBtnCls}
           >
             {t.admin.cancel}

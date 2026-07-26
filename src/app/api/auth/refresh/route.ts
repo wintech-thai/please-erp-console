@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
 
     const refreshPath = WEB_ROLE === 'ADMIN'
       ? `${BACKEND_URL}/admin-api/AuthAdmin/org/global/action/Refresh`
-      : `${BACKEND_URL}/api/OrgUser/org/global/action/RefreshToken`
+      : `${BACKEND_URL}/api/Auth/org/temp/action/Refresh`
 
     const response = await fetch(refreshPath, {
       method: 'POST',

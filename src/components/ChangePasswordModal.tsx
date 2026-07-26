@@ -37,13 +37,15 @@ export default function ChangePasswordModal({ onClose }: Props) {
   const [loading, setLoading] = useState(false)
   const mismatch = form.confirmPassword !== '' && form.confirmPassword !== form.newPassword
 
-  const updatePath = isAdmin ? '/admin-api/OnlyAdmin/org/global/action/UpdatePassword' : '/api/OrgUser/org/global/action/UpdatePassword'
-
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (form.newPassword !== form.confirmPassword) return
     setLoading(true)
     const userName = localStorage.getItem('username') || ''
+    const orgId = localStorage.getItem('orgId') || 'global'
+    const updatePath = isAdmin
+      ? '/admin-api/OnlyAdmin/org/global/action/UpdatePassword'
+      : `/api/OnlyUser/org/${orgId}/action/UpdatePassword`
     try {
       await client.post(updatePath, { userName, currentPassword: form.currentPassword, newPassword: form.newPassword })
       toast.success(t.changePassword.success); onClose()

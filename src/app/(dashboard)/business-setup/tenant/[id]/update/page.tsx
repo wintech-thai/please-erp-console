@@ -11,6 +11,11 @@ import { useUnsavedChanges } from '@/hooks/useUnsavedChanges'
 import LeaveConfirmModal from '@/components/LeaveConfirmModal'
 import { useLang } from '@/context/LanguageContext'
 
+function parseCsv(value: string | null | undefined): string[] {
+  if (!value) return []
+  return value.split(',').map(s => s.trim()).filter(Boolean)
+}
+
 function TenantUpdateContent() {
   const { t } = useLang()
   const router = useRouter()
@@ -86,9 +91,11 @@ function TenantUpdateContent() {
     setSaving(true)
     try {
       await tenantApi.updateTenantById(id, {
+        Code: tenant?.code || undefined,
         Name: name.trim() || undefined,
         ContactEmail: contactEmail.trim() || undefined,
         ContactPhone: contactPhone.trim() || undefined,
+        Tags: finalTags.length ? finalTags.join(',') : '',
       })
       toast.success(t.tenant.updatedSuccess)
       setIsDirty(false)
@@ -139,7 +146,7 @@ function TenantUpdateContent() {
               <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
                 {t.tenant.fieldOrgId}
               </label>
-              <div className="px-4 py-2.5 text-sm border border-gray-100 rounded-lg bg-gray-50 text-gray-500 font-mono">
+              <div className="px-4 py-2.5 text-sm border border-gray-100 rounded-lg bg-gray-50 text-gray-500">
                 {tenant?.code || '—'}
               </div>
             </div>
@@ -209,11 +216,6 @@ function TenantUpdateContent() {
       </form>
     </div>
   )
-}
-
-function parseCsv(value: string | null | undefined): string[] {
-  if (!value) return []
-  return value.split(',').map(s => s.trim()).filter(Boolean)
 }
 
 function SectionHeader({ children }: { children: React.ReactNode }) {

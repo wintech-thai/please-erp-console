@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, FormEvent } from 'react'
+import { useState, useEffect, useRef, FormEvent } from 'react'
 import { useLang } from '@/context/LanguageContext'
 import { client } from '@/lib/axios'
 import { isAdmin } from '@/lib/web-role'
@@ -25,13 +25,23 @@ export default function ProfileModal({ onClose }: Props) {
   const [saving, setSaving] = useState(false)
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
 
-  const apiPath = isAdmin ? '/admin-api/OnlyAdmin/org/global/action/GetUserInfo' : '/api/OrgUser/org/global/action/GetUserInfo'
-  const updatePath = isAdmin ? '/admin-api/OnlyAdmin/org/global/action/UpdateUserInfo' : '/api/OrgUser/org/global/action/UpdateUserInfo'
+  const updatePathRef = useRef('')
 
   useEffect(() => {
+    const orgId = localStorage.getItem('orgId') || 'global'
+    const username = localStorage.getItem('username') || ''
+
+    const apiPath = isAdmin
+      ? '/admin-api/OnlyAdmin/org/global/action/GetUserInfo'
+      : `/api/OnlyUser/org/${orgId}/action/GetUserByUserName/${username}`
+
+    updatePathRef.current = isAdmin
+      ? '/admin-api/OnlyAdmin/org/global/action/UpdateUserInfo'
+      : `/api/OnlyUser/org/${orgId}/action/UpdateUserByUserName/${username}`
+
     client.get(apiPath)
       .then((res) => {
-        const d = res.data.user
+        const d = res.data.user ?? res.data
         const rawPhone: string = d.phoneNumber || ''
         const displayPhone = rawPhone.startsWith('+66') ? '0' + rawPhone.slice(3) : rawPhone
         const loaded: Profile = { username: d.userName || '', email: d.userEmail || '', firstName: d.name || '', lastName: d.lastName || '', phoneNumber: displayPhone, secondaryEmail: d.secondaryEmail || '' }
@@ -47,7 +57,7 @@ export default function ProfileModal({ onClose }: Props) {
     setSaving(true)
     try {
       const phone = profile.phoneNumber.startsWith('0') ? '+66' + profile.phoneNumber.slice(1) : profile.phoneNumber
-      await client.post(updatePath, { name: profile.firstName, lastName: profile.lastName, phoneNumber: phone, secondaryEmail: profile.secondaryEmail })
+      await client.post(updatePathRef.current, { name: profile.firstName, lastName: profile.lastName, phoneNumber: phone, secondaryEmail: profile.secondaryEmail })
       toast.success(t.profile.saveSuccess); onClose()
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : t.profile.saveError) }
     finally { setSaving(false) }

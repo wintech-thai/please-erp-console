@@ -6,9 +6,59 @@ import { useSearchParams, usePathname, useRouter } from 'next/navigation'
 import { tenantApi } from '@/lib/api/tenant.api'
 import type { MerchantItem } from '@/lib/api/types'
 import { toast } from 'sonner'
-import { Search, ChevronLeft, ChevronRight, Building2, MoreHorizontal, Users, Ban, CheckCircle } from 'lucide-react'
+import { Search, Plus, MoreHorizontal, Ban, CheckCircle, Users, Building2, ChevronLeft, ChevronRight } from 'lucide-react'
 import clsx from 'clsx'
 import { useLang } from '@/context/LanguageContext'
+
+function StatusBadge({ status }: { status?: string | null }) {
+  const lower = status?.toLowerCase()
+  const cfg =
+    lower === 'active'
+      ? { bg: 'bg-emerald-50 text-emerald-700 ring-emerald-200', dot: 'bg-emerald-500' }
+      : lower === 'pending'
+        ? { bg: 'bg-amber-50 text-amber-700 ring-amber-200', dot: 'bg-amber-400' }
+        : { bg: 'bg-gray-100 text-gray-500 ring-gray-200', dot: 'bg-gray-400' }
+  return (
+    <span className={clsx('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ring-1', cfg.bg)}>
+      <span className={clsx('w-1.5 h-1.5 rounded-full flex-shrink-0', cfg.dot)} />
+      {status ?? 'Unknown'}
+    </span>
+  )
+}
+
+function ConfirmDialog({ title, desc, confirmLabel, onConfirm, onCancel }: {
+  title: string; desc: string; confirmLabel: string
+  onConfirm: () => void; onCancel: () => void
+}) {
+  const { t } = useLang()
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden text-center px-8 py-8" style={{ background: 'linear-gradient(135deg, rgb(var(--color-primary-800)) 0%, rgb(var(--color-primary-900)) 100%)' }}>
+        <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-5">
+          <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+          </svg>
+        </div>
+        <h3 className="text-lg font-bold text-white mb-2">{title}</h3>
+        <p className="text-sm text-white/60 mb-7">{desc}</p>
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-2.5 text-sm font-semibold text-white/80 bg-white/10 border border-white/20 rounded-xl hover:bg-white/20 transition-colors uppercase"
+          >
+            {t.admin.cancel}
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 py-2.5 text-sm font-semibold text-white bg-primary-600 rounded-xl hover:bg-primary-700 transition-colors uppercase"
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function TenantListContent() {
   const { t } = useLang()
@@ -23,45 +73,56 @@ function TenantListContent() {
   const [itemsPerPage, setItemsPerPage] = useState(25)
   const [searchTerm, setSearchTerm] = useState('')
   const [appliedSearch, setAppliedSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
   const [loading, setLoading] = useState(true)
-  const [selectedRowId, setSelectedRowId] = useState<string | null>(highlightIdParam)
-
-  const SS_KEY = 'erp_tenant_highlight'
-  const autoSelectFirstRef = useRef(false)
-
-  useEffect(() => {
-    if (!highlightIdParam) {
-      const saved = sessionStorage.getItem(SS_KEY)
-      if (saved) setSelectedRowId(saved)
-    }
-  }, [])
+  const [selectedRowId, setSelectedRowId] = useState<string | null>(() => {
+    if (highlightIdParam) return highlightIdParam
+    if (typeof window !== 'undefined') return sessionStorage.getItem('erp_tenant_highlight') ?? null
+    return null
+  })
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [menuPos, setMenuPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null)
+  const [confirmDialog, setConfirmDialog] = useState<{ type: 'enable' | 'disable'; tenant: MerchantItem } | null>(null)
+  const menuRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   useEffect(() => {
     if (highlightIdParam) {
       setSelectedRowId(highlightIdParam)
-      sessionStorage.setItem(SS_KEY, highlightIdParam)
+      sessionStorage.setItem('erp_tenant_highlight', highlightIdParam)
       const params = new URLSearchParams(searchParams.toString())
       params.delete('highlight')
       window.history.replaceState(null, '', `${pathname}?${params.toString()}`)
     }
   }, [highlightIdParam, pathname, searchParams])
 
-  const selectRow = (id: string) => {
-    setSelectedRowId(id)
-    sessionStorage.setItem(SS_KEY, id)
-  }
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (openMenuId) {
+        const ref = menuRefs.current[openMenuId]
+        if (ref && !ref.contains(e.target as Node)) setOpenMenuId(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [openMenuId])
 
-  const fetchTenants = async (currentPage: number, keyword: string = '') => {
+  const fetchTenants = async (currentPage: number, status = '', search = '') => {
     setLoading(true)
     try {
+      const payload = {
+        page: currentPage,
+        limit: itemsPerPage,
+        Status: status || undefined,
+        FullTextSearch: search.trim() || undefined,
+      }
       const [listRes, countRes] = await Promise.all([
-        tenantApi.getTenants({ FullTextSearch: keyword || undefined, page: currentPage, limit: itemsPerPage }),
-        tenantApi.getTenantCount({ FullTextSearch: keyword || undefined }),
+        tenantApi.getTenants(payload),
+        tenantApi.getTenantCount(payload),
       ])
       const raw = listRes.data
-      setTenants(Array.isArray(raw) ? raw : (raw?.merchants ?? []))
+      setTenants(Array.isArray(raw) ? raw : ((raw as any)?.merchants ?? []))
       const rawCount = countRes.data
-      setTotal(typeof rawCount === 'number' ? rawCount : (rawCount?.count ?? 0))
+      setTotal(typeof rawCount === 'number' ? rawCount : ((rawCount as any)?.count ?? 0))
     } catch {
       toast.error(t.tenant.failedToLoad)
     } finally {
@@ -69,175 +130,267 @@ function TenantListContent() {
     }
   }
 
-  useEffect(() => {
-    fetchTenants(page, appliedSearch)
-  }, [page, itemsPerPage])
-
-  useEffect(() => {
-    if (!autoSelectFirstRef.current) return
-    autoSelectFirstRef.current = false
-    if (tenants.length > 0) selectRow(tenants[0].id)
-    else { setSelectedRowId(null); sessionStorage.removeItem(SS_KEY) }
-  }, [tenants])
+  useEffect(() => { fetchTenants(page, statusFilter, appliedSearch) }, [page, itemsPerPage, statusFilter, appliedSearch])
 
   const handleSearch = () => {
-    autoSelectFirstRef.current = true
     setAppliedSearch(searchTerm)
     setPage(1)
-    fetchTenants(1, searchTerm)
-  }
-
-  const handleDisable = async (tenant: MerchantItem) => {
-    try {
-      await tenantApi.disableTenantById(tenant.id)
-      toast.success(t.tenant.disabledSuccess)
-      fetchTenants(page, appliedSearch)
-    } catch {
-      toast.error(t.tenant.failedToDisable)
-    }
   }
 
   const handleEnable = async (tenant: MerchantItem) => {
     try {
       await tenantApi.enableTenantById(tenant.id)
       toast.success(t.tenant.enabledSuccess)
-      fetchTenants(page, appliedSearch)
+      fetchTenants(page, statusFilter, appliedSearch)
     } catch {
       toast.error(t.tenant.failedToEnable)
     }
   }
 
+  const handleDisable = async (tenant: MerchantItem) => {
+    try {
+      await tenantApi.disableTenantById(tenant.id)
+      toast.success(t.tenant.disabledSuccess)
+      fetchTenants(page, statusFilter, appliedSearch)
+    } catch {
+      toast.error(t.tenant.failedToDisable)
+    }
+  }
+
+  const isActive = (tenant: MerchantItem) => tenant.status?.toLowerCase() === 'active'
+
+  const totalPages = Math.ceil(total / itemsPerPage)
   const startRow = total === 0 ? 0 : (page - 1) * itemsPerPage + 1
   const endRow = Math.min(page * itemsPerPage, total)
-  const totalPages = Math.ceil(total / itemsPerPage)
 
-  const createUrl = selectedRowId
-    ? `/business-setup/tenant/create?prevHighlight=${selectedRowId}`
-    : '/business-setup/tenant/create'
+  const cols = [
+    t.tenant.colCode, t.tenant.colName, t.tenant.colEmail,
+    t.tenant.colPhone, t.tenant.colTags, t.tenant.colStatus, t.tenant.colAction,
+  ]
 
   return (
-    <div className="flex flex-col min-h-full">
-      <div className="flex items-start justify-between mb-6">
+    <div className="flex flex-col overflow-hidden h-[calc(100dvh-5rem)] sm:h-[calc(100dvh-6.5rem)]">
+      {confirmDialog && (
+        <ConfirmDialog
+          title={confirmDialog.type === 'enable' ? t.tenant.enableConfirmTitle : t.tenant.disableConfirmTitle}
+          desc={confirmDialog.type === 'enable' ? t.tenant.enableConfirmDesc : t.tenant.disableConfirmDesc}
+          confirmLabel={t.admin.yes}
+          onConfirm={() => {
+            const ten = confirmDialog.tenant
+            confirmDialog.type === 'enable' ? handleEnable(ten) : handleDisable(ten)
+            setConfirmDialog(null)
+          }}
+          onCancel={() => setConfirmDialog(null)}
+        />
+      )}
+
+      {/* Header */}
+      <div className="flex-none flex items-center justify-between mb-5">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{t.tenant.title}</h1>
-          <p className="text-base text-gray-500 mt-1">{t.tenant.subtitle}</p>
+          <p className="text-sm text-gray-500 mt-0.5">{t.tenant.subtitle}</p>
         </div>
+        <Link
+          href="/business-setup/tenant/create"
+          className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-xl transition-colors shadow-sm"
+        >
+          <Plus className="w-4 h-4" />
+          {t.tenant.addTenant}
+        </Link>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col flex-1 min-h-0">
-        {/* Toolbar */}
-        <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center px-6 py-4 border-b border-gray-100">
-          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSearch()}
-              placeholder={t.tenant.searchPlaceholder}
-              className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent placeholder-gray-400 sm:min-w-[220px]"
-            />
-            <button
-              onClick={handleSearch}
-              className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm rounded-lg transition-colors flex items-center justify-center gap-1.5"
-            >
-              <Search className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="flex gap-2 w-full sm:w-auto justify-end">
-            <Link href={createUrl}>
-              <button className="px-5 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors uppercase">
-                {t.tenant.addTenant}
-              </button>
-            </Link>
-          </div>
+      {/* Filters */}
+      <div className="flex-none flex flex-wrap items-center gap-3 mb-4">
+        <div className="flex items-center gap-2 flex-1 min-w-56 max-w-xs bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-sm">
+          <Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSearch()}
+            placeholder={t.tenant.searchPlaceholder}
+            className="flex-1 text-sm bg-transparent outline-none text-gray-700 placeholder-gray-400"
+          />
+          {searchTerm && (
+            <button onClick={() => { setSearchTerm(''); setAppliedSearch('') }} className="text-gray-400 hover:text-gray-600">✕</button>
+          )}
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto flex-1 min-h-0">
-          <table className="min-w-full">
-            <thead>
-              <tr className="bg-gray-50/70 border-b border-gray-100">
-                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.tenant.colCode}</th>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.tenant.colName}</th>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.tenant.colEmail}</th>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.tenant.colPhone}</th>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.tenant.colTags}</th>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.tenant.colStatus}</th>
-                <th className="w-14 px-4 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.tenant.colAction}</th>
+        <select
+          value={statusFilter}
+          onChange={e => { setStatusFilter(e.target.value); setPage(1) }}
+          className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500"
+        >
+          <option value="">{t.tenant.filterAll}</option>
+          <option value="Active">{t.tenant.filterActive}</option>
+          <option value="Pending">{t.tenant.filterPending}</option>
+          <option value="Disabled">{t.tenant.filterDisabled}</option>
+        </select>
+
+        <button
+          onClick={handleSearch}
+          className="px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors"
+        >
+          {t.admin.search}
+        </button>
+      </div>
+
+      {/* Table card */}
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-white rounded-xl shadow-sm border border-gray-100">
+        {!loading && (
+          <div className="flex-none px-4 pt-3 pb-1">
+            <span className="text-sm text-gray-500">
+              <span className="font-semibold text-gray-800">{total}</span> {t.tenant.foundCount}
+            </span>
+          </div>
+        )}
+
+        <div className="flex-1 overflow-auto custom-scrollbar">
+          <table className="w-full text-sm border-separate border-spacing-0">
+            <thead className="sticky top-0 z-10">
+              <tr className="bg-gray-50">
+                {cols.map((col, i) => (
+                  <th
+                    key={col}
+                    className={clsx(
+                      'px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200 whitespace-nowrap text-left',
+                      i === 0 && 'rounded-tl-xl',
+                      i === cols.length - 1 && 'rounded-tr-xl text-center'
+                    )}
+                  >
+                    {col}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} className="py-20 text-center"><LoadingRow label={t.admin.loading} /></td></tr>
+                <tr>
+                  <td colSpan={cols.length} className="px-4 py-16 text-center">
+                    <div className="flex flex-col items-center justify-center gap-3">
+                      <svg className="w-8 h-8 animate-spin text-primary-500" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      <span className="text-sm text-gray-400">{t.admin.loading}</span>
+                    </div>
+                  </td>
+                </tr>
               ) : tenants.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-20 text-center">
-                    <EmptyRow
-                      icon={<Building2 className="w-7 h-7 text-gray-400" />}
-                      title={t.tenant.noTenantsFound}
-                      subtitle={t.tenant.noTenantsSubtitle}
-                    />
+                  <td colSpan={cols.length} className="px-4 py-16 text-center">
+                    <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                      <Building2 className="w-7 h-7 text-gray-400" />
+                    </div>
+                    <p className="text-sm font-semibold text-gray-500">{t.tenant.noTenantsFound}</p>
+                    <p className="text-xs text-gray-400 mt-1">{t.tenant.noTenantsSubtitle}</p>
                   </td>
                 </tr>
               ) : (
-                tenants.map(tenant => {
-                  const isSelected = selectedRowId === tenant.id
-                  const isActive = tenant.status?.toLowerCase() === 'active'
+                tenants.map((tenant, idx) => {
+                  const highlighted = selectedRowId === tenant.id
                   const tagList = parseCsv(tenant.tags)
                   return (
                     <tr
                       key={tenant.id}
-                      onClick={() => selectRow(tenant.id)}
+                      onClick={() => {
+                        const next = selectedRowId === tenant.id ? null : tenant.id
+                        setSelectedRowId(next)
+                        if (next) sessionStorage.setItem('erp_tenant_highlight', next)
+                        else sessionStorage.removeItem('erp_tenant_highlight')
+                      }}
                       className={clsx(
-                        'border-l-[3px] transition-all cursor-pointer',
-                        isSelected
-                          ? '!bg-primary-100 border-l-primary-500'
-                          : 'border-l-transparent hover:bg-gray-50/50'
+                        'cursor-pointer transition-colors',
+                        highlighted
+                          ? 'bg-primary-100'
+                          : idx % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-50/40 hover:bg-gray-100/50'
                       )}
                     >
-                      <td className="px-6 py-4 text-sm text-gray-700">{tenant.code || '—'}</td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap">
                         <Link
                           href={`/business-setup/tenant/${tenant.id}/update`}
                           onClick={e => e.stopPropagation()}
-                          className={clsx('text-sm font-semibold hover:underline', isSelected ? 'text-primary-700' : 'text-gray-900 hover:text-primary-600')}
+                          className={clsx('font-semibold text-sm hover:underline', highlighted ? 'text-primary-700' : 'text-gray-800 hover:text-primary-600')}
                         >
-                          {tenant.name || '—'}
+                          {tenant.code ?? '—'}
                         </Link>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">{tenant.contactEmail || '—'}</td>
-                      <td className="px-6 py-4 text-sm text-gray-500">{tenant.contactPhone || '—'}</td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap">
+                        <span className="text-sm text-gray-600">{tenant.name ?? '—'}</span>
+                      </td>
+                      <td className="px-4 py-3 border-b border-gray-100 text-sm text-gray-600 whitespace-nowrap">
+                        {tenant.contactEmail ?? '—'}
+                      </td>
+                      <td className="px-4 py-3 border-b border-gray-100 text-sm text-gray-600 whitespace-nowrap">
+                        {tenant.contactPhone ?? '—'}
+                      </td>
+                      <td className="px-4 py-3 border-b border-gray-100">
                         <div className="flex flex-wrap gap-1">
                           {tagList.length
                             ? tagList.map(tag => <TagBadge key={tag}>{tag}</TagBadge>)
                             : <span className="text-sm text-gray-400">—</span>}
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <StatusBadge status={tenant.status || ''} />
+                      <td className="px-4 py-3 border-b border-gray-100 whitespace-nowrap">
+                        <StatusBadge status={tenant.status} />
                       </td>
-                      <td className="px-4 py-4 text-center" onClick={e => e.stopPropagation()}>
-                        <RowActions items={[
-                          {
-                            label: t.tenant.viewUsers,
-                            icon: <Users className="w-4 h-4" />,
-                            onClick: () => router.push(`/business-setup/tenant/${tenant.id}/users`),
-                          },
-                          {
-                            label: t.tenant.disableTenant,
-                            icon: <Ban className="w-4 h-4" />,
-                            danger: true,
-                            disabled: !isActive,
-                            onClick: () => handleDisable(tenant),
-                          },
-                          {
-                            label: t.tenant.enableTenant,
-                            icon: <CheckCircle className="w-4 h-4" />,
-                            disabled: isActive,
-                            onClick: () => handleEnable(tenant),
-                          },
-                        ]} />
+
+                      {/* 3-dot menu */}
+                      <td className="px-4 py-3 border-b border-gray-100 text-center" onClick={e => e.stopPropagation()}>
+                        <div className="relative flex justify-center" ref={el => { menuRefs.current[tenant.id] = el }}>
+                          <button
+                            onClick={e => {
+                              e.stopPropagation()
+                              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                              const spaceBelow = window.innerHeight - rect.bottom
+                              const right = window.innerWidth - rect.right
+                              if (spaceBelow < 200) {
+                                setMenuPos({ bottom: window.innerHeight - rect.top + 4, right })
+                              } else {
+                                setMenuPos({ top: rect.bottom + 4, right })
+                              }
+                              setOpenMenuId(prev => prev === tenant.id ? null : tenant.id)
+                            }}
+                            className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+                          >
+                            <MoreHorizontal className="w-4 h-4" />
+                          </button>
+
+                          {openMenuId === tenant.id && menuPos && (
+                            <div
+                              className="fixed w-52 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-[9999]"
+                              style={{ top: menuPos.top, bottom: menuPos.bottom, right: menuPos.right }}
+                            >
+                              {isActive(tenant) ? (
+                                <button
+                                  onClick={e => { e.stopPropagation(); setOpenMenuId(null); setConfirmDialog({ type: 'disable', tenant }) }}
+                                  className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                                >
+                                  <Ban className="w-4 h-4 flex-shrink-0" />
+                                  {t.tenant.disableTenant}
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={e => { e.stopPropagation(); setOpenMenuId(null); setConfirmDialog({ type: 'enable', tenant }) }}
+                                  className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-emerald-600 hover:bg-emerald-50 transition-colors"
+                                >
+                                  <CheckCircle className="w-4 h-4 flex-shrink-0" />
+                                  {t.tenant.enableTenant}
+                                </button>
+                              )}
+
+                              <div className="border-t border-gray-200 my-1" />
+
+                              <button
+                                onClick={e => { e.stopPropagation(); setOpenMenuId(null); sessionStorage.setItem('erp_tenant_highlight', tenant.id); router.push(`/business-setup/tenant/${tenant.id}/users`) }}
+                                className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                              >
+                                <Users className="w-4 h-4 flex-shrink-0" />
+                                {t.tenant.viewUsers}
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )
@@ -247,7 +400,7 @@ function TenantListContent() {
           </table>
         </div>
 
-        {/* Pagination */}
+        {/* Pagination footer */}
         <div className="flex items-center justify-end px-6 py-3 border-t border-gray-100 gap-4 sm:gap-6">
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <span>{t.admin.rowsPerPage}</span>
@@ -256,7 +409,7 @@ function TenantListContent() {
               onChange={e => { setItemsPerPage(Number(e.target.value)); setPage(1) }}
               className="bg-transparent border-none text-gray-700 focus:ring-0 cursor-pointer font-medium outline-none text-sm"
             >
-              {[25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
+              {[25, 50, 100, 200].map(n => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
           <div className="flex items-center gap-4">
@@ -293,92 +446,16 @@ function TagBadge({ children }: { children: React.ReactNode }) {
   return <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-primary-50 text-primary-700 rounded-md">{children}</span>
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const key = status?.toLowerCase()
-  const map: Record<string, { label: string; className: string; dot: string }> = {
-    active:   { label: 'Active',   className: 'bg-green-100 text-green-700',  dot: 'bg-green-500' },
-    disabled: { label: 'Disabled', className: 'bg-gray-100 text-gray-500',    dot: 'bg-gray-400' },
-    pending:  { label: 'Pending',  className: 'bg-amber-100 text-amber-700',  dot: 'bg-amber-500' },
-  }
-  const cfg = map[key] ?? { label: status || '—', className: 'bg-gray-100 text-gray-500', dot: 'bg-gray-400' }
-  return (
-    <span className={clsx('inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full', cfg.className)}>
-      <span className={clsx('w-1.5 h-1.5 rounded-full', cfg.dot)} />
-      {cfg.label}
-    </span>
-  )
-}
-
-type ActionItem = { label: string; icon: React.ReactNode; danger?: boolean; disabled?: boolean; onClick: () => void }
-
-function RowActions({ items }: { items: ActionItem[] }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false) }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open])
-
-  return (
-    <div ref={ref} className="relative flex justify-center">
-      <button
-        onClick={e => { e.stopPropagation(); setOpen(v => !v) }}
-        className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-      >
-        <MoreHorizontal className="w-4 h-4" />
-      </button>
-      {open && (
-        <div className="absolute right-0 top-full mt-1 w-52 bg-white border border-gray-200 rounded-xl shadow-lg z-20 py-1 overflow-hidden">
-          {items.map((item, i) => (
-            <button
-              key={i}
-              onClick={() => { if (!item.disabled) { item.onClick(); setOpen(false) } }}
-              className={clsx(
-                'w-full flex items-center gap-2.5 px-4 py-2 text-sm text-left transition-colors',
-                item.disabled
-                  ? 'text-gray-300 cursor-not-allowed'
-                  : item.danger
-                  ? 'text-red-600 hover:bg-red-50'
-                  : 'text-gray-700 hover:bg-gray-50'
-              )}
-            >
-              {item.icon}{item.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function LoadingRow({ label }: { label: string }) {
-  return (
-    <div className="flex items-center justify-center gap-2 text-gray-400">
-      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-      </svg>
-      <span className="text-sm">{label}</span>
-    </div>
-  )
-}
-
-function EmptyRow({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle: string }) {
-  return (
-    <>
-      <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">{icon}</div>
-      <p className="text-base font-medium text-gray-500">{title}</p>
-      <p className="text-sm text-gray-400 mt-1">{subtitle}</p>
-    </>
-  )
-}
-
 export default function TenantListPage() {
   return (
-    <Suspense>
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-64 text-gray-400">
+        <svg className="w-6 h-6 animate-spin mr-2 text-primary-500" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+      </div>
+    }>
       <TenantListContent />
     </Suspense>
   )

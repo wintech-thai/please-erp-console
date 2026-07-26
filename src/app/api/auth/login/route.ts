@@ -7,10 +7,10 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
-    // Admin → /admin-api/AuthAdmin, Tenant → /api/OrgUser
+    // Admin → /admin-api/AuthAdmin, Tenant → /api/Auth
     const loginPath = WEB_ROLE === 'ADMIN'
       ? `${BACKEND_URL}/admin-api/AuthAdmin/org/global/action/Login`
-      : `${BACKEND_URL}/api/OrgUser/org/global/action/Login`
+      : `${BACKEND_URL}/api/Auth/org/temp/action/Login`
 
     const response = await fetch(loginPath, {
       method: 'POST',

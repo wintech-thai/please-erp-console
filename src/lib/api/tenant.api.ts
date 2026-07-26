@@ -37,4 +37,7 @@ export const tenantApi = {
 
   disableOrgUser: (orgCustomId: string, orgUserId: string) =>
     client.post(`${ORG_BASE}/DisableOrgUserById/${orgCustomId}/${orgUserId}`, null),
+
+  deleteOrgUser: (orgCustomId: string, orgUserId: string) =>
+    client.delete(`${ORG_BASE}/DeleteOrgUserById/${orgCustomId}/${orgUserId}`),
 }
