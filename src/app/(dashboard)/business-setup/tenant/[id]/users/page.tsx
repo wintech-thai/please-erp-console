@@ -114,7 +114,7 @@ function TenantUsersContent() {
     try {
       const tenantRes = await tenantApi.getTenantById(id)
       const raw = tenantRes.data
-      const m: MerchantItem = (raw as { merchant?: MerchantItem }).merchant ?? (raw as MerchantItem)
+      const m: MerchantItem = (raw as { merchant?: MerchantItem }).merchant ?? (raw as unknown as MerchantItem)
       setTenant(m)
       if (m.code) {
         const usersRes = await tenantApi.getOrgUsers(m.code)
