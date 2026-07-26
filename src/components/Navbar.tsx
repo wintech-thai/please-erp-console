@@ -14,9 +14,10 @@ import { AppVersionDisplay } from '@/components/AppVersionDisplay'
 import { useBrand } from '@/context/BrandContext'
 
 const COMING_SOON_ITEMS = [
-  { key: 'businessSetup', href: '/business-setup', label: { th: 'ตั้งค่าธุรกิจ', en: 'Business Setup' } },
   { key: 'reportAndAnalytic', href: '/report-analytic', label: { th: 'รายงาน & วิเคราะห์', en: 'Report & Analytic' } },
 ]
+
+const TENANT_ITEM = { key: 'tenant', href: '/business-setup/tenant', label: { th: 'Tenant', en: 'Tenant' } }
 
 const SETTING_ITEM = { key: 'setting', href: '/setting', label: { th: 'Support & ตั้งค่า', en: 'Support & Setting' } }
 
@@ -66,6 +67,9 @@ export default function Navbar() {
         <nav className="hidden md:flex items-center gap-0.5 flex-nowrap">
           <Link href="/overview" className={clsx('flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors', pathname === '/overview' || pathname.startsWith('/overview/') ? 'bg-white/20 text-white' : 'text-white hover:bg-white/15')}>
             {t.nav.overview}
+          </Link>
+          <Link href={TENANT_ITEM.href} className={clsx('flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors', pathname.startsWith('/business-setup') ? 'bg-white/20 text-white' : 'text-white hover:bg-white/15')}>
+            {lang === 'th' ? TENANT_ITEM.label.th : TENANT_ITEM.label.en}
           </Link>
           {COMING_SOON_ITEMS.map((item) => (
             <Link key={item.key} href={item.href} className={clsx('flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors', pathname.startsWith(item.href) ? 'bg-white/20 text-white' : 'text-white hover:bg-white/15')}>
@@ -158,6 +162,9 @@ export default function Navbar() {
         <nav className="md:hidden border-t border-white/10 px-3 pb-3 pt-2 flex flex-col gap-1">
           <Link href="/overview" onClick={() => setMobileMenuOpen(false)} className={clsx('flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors', pathname === '/overview' ? 'bg-white/20 text-white' : 'text-white hover:bg-white/15')}>
             {t.nav.overview}
+          </Link>
+          <Link href={TENANT_ITEM.href} onClick={() => setMobileMenuOpen(false)} className={clsx('flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors', pathname.startsWith('/business-setup') ? 'bg-white/20 text-white' : 'text-white hover:bg-white/15')}>
+            {lang === 'th' ? TENANT_ITEM.label.th : TENANT_ITEM.label.en}
           </Link>
           {COMING_SOON_ITEMS.map((item) => (
             <Link key={item.key} href={item.href} onClick={() => setMobileMenuOpen(false)} className={clsx('flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors', pathname.startsWith(item.href) ? 'bg-white/20 text-white' : 'text-white hover:bg-white/15')}>
