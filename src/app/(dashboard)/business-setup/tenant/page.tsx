@@ -172,7 +172,7 @@ function TenantListContent() {
                           : 'border-l-transparent hover:bg-gray-50/50'
                       )}
                     >
-                      <td className="px-6 py-4 text-sm font-mono text-gray-700">{tenant.code || '—'}</td>
+                      <td className="px-6 py-4 text-sm text-gray-700">{tenant.code || '—'}</td>
                       <td className="px-6 py-4">
                         <span className={clsx('text-sm font-semibold', isSelected ? 'text-primary-700' : 'text-gray-900')}>
                           {tenant.name || '—'}
