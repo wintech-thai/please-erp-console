@@ -44,7 +44,7 @@ function TenantUpdateContent() {
       try {
         const res = await tenantApi.getTenantById(id)
         const raw = res.data
-        const m: MerchantItem = (raw as { merchant?: MerchantItem }).merchant ?? (raw as MerchantItem)
+        const m: MerchantItem = (raw as { merchant?: MerchantItem }).merchant ?? (raw as unknown as MerchantItem)
         setTenant(m)
         const n = m.name ?? ''
         const e = m.contactEmail ?? ''
