@@ -1,17 +1,21 @@
 'use client'
 
 import { useState, useEffect, useRef, Suspense } from 'react'
-import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { useSearchParams, usePathname, useRouter } from 'next/navigation'
 import { tenantApi } from '@/lib/api/tenant.api'
 import type { MerchantItem } from '@/lib/api/types'
 import { toast } from 'sonner'
-import { Search, ChevronLeft, ChevronRight, Building2, MoreHorizontal, Users } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, Building2, MoreHorizontal, Users, Ban, CheckCircle } from 'lucide-react'
 import clsx from 'clsx'
 import { useLang } from '@/context/LanguageContext'
 
 function TenantListContent() {
   const { t } = useLang()
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const highlightIdParam = searchParams.get('highlight')
 
   const [tenants, setTenants] = useState<MerchantItem[]>([])
   const [total, setTotal] = useState(0)
@@ -20,14 +24,32 @@ function TenantListContent() {
   const [searchTerm, setSearchTerm] = useState('')
   const [appliedSearch, setAppliedSearch] = useState('')
   const [loading, setLoading] = useState(true)
-  const [selectedRowId, setSelectedRowId] = useState<string | null>(null)
+  const [selectedRowId, setSelectedRowId] = useState<string | null>(highlightIdParam)
 
   const SS_KEY = 'erp_tenant_highlight'
+  const autoSelectFirstRef = useRef(false)
 
   useEffect(() => {
-    const saved = sessionStorage.getItem(SS_KEY)
-    if (saved) setSelectedRowId(saved)
+    if (!highlightIdParam) {
+      const saved = sessionStorage.getItem(SS_KEY)
+      if (saved) setSelectedRowId(saved)
+    }
   }, [])
+
+  useEffect(() => {
+    if (highlightIdParam) {
+      setSelectedRowId(highlightIdParam)
+      sessionStorage.setItem(SS_KEY, highlightIdParam)
+      const params = new URLSearchParams(searchParams.toString())
+      params.delete('highlight')
+      window.history.replaceState(null, '', `${pathname}?${params.toString()}`)
+    }
+  }, [highlightIdParam, pathname, searchParams])
+
+  const selectRow = (id: string) => {
+    setSelectedRowId(id)
+    sessionStorage.setItem(SS_KEY, id)
+  }
 
   const fetchTenants = async (currentPage: number, keyword: string = '') => {
     setLoading(true)
@@ -51,7 +73,15 @@ function TenantListContent() {
     fetchTenants(page, appliedSearch)
   }, [page, itemsPerPage])
 
+  useEffect(() => {
+    if (!autoSelectFirstRef.current) return
+    autoSelectFirstRef.current = false
+    if (tenants.length > 0) selectRow(tenants[0].id)
+    else { setSelectedRowId(null); sessionStorage.removeItem(SS_KEY) }
+  }, [tenants])
+
   const handleSearch = () => {
+    autoSelectFirstRef.current = true
     setAppliedSearch(searchTerm)
     setPage(1)
     fetchTenants(1, searchTerm)
@@ -77,19 +107,13 @@ function TenantListContent() {
     }
   }
 
-  const selectRow = (id: string) => {
-    setSelectedRowId(id)
-    sessionStorage.setItem(SS_KEY, id)
-  }
-
-  const handleRowClick = (tenant: MerchantItem) => {
-    selectRow(tenant.id)
-    router.push(`/business-setup/tenant/${tenant.id}/update`)
-  }
-
   const startRow = total === 0 ? 0 : (page - 1) * itemsPerPage + 1
   const endRow = Math.min(page * itemsPerPage, total)
   const totalPages = Math.ceil(total / itemsPerPage)
+
+  const createUrl = selectedRowId
+    ? `/business-setup/tenant/create?prevHighlight=${selectedRowId}`
+    : '/business-setup/tenant/create'
 
   return (
     <div className="flex flex-col min-h-full">
@@ -120,12 +144,11 @@ function TenantListContent() {
             </button>
           </div>
           <div className="flex gap-2 w-full sm:w-auto justify-end">
-            <button
-              onClick={() => router.push('/business-setup/tenant/create')}
-              className="px-5 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors uppercase"
-            >
-              {t.tenant.addTenant}
-            </button>
+            <Link href={createUrl}>
+              <button className="px-5 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors uppercase">
+                {t.tenant.addTenant}
+              </button>
+            </Link>
           </div>
         </div>
 
@@ -164,7 +187,7 @@ function TenantListContent() {
                   return (
                     <tr
                       key={tenant.id}
-                      onClick={() => handleRowClick(tenant)}
+                      onClick={() => selectRow(tenant.id)}
                       className={clsx(
                         'border-l-[3px] transition-all cursor-pointer',
                         isSelected
@@ -174,9 +197,13 @@ function TenantListContent() {
                     >
                       <td className="px-6 py-4 text-sm text-gray-700">{tenant.code || '—'}</td>
                       <td className="px-6 py-4">
-                        <span className={clsx('text-sm font-semibold', isSelected ? 'text-primary-700' : 'text-gray-900')}>
+                        <Link
+                          href={`/business-setup/tenant/${tenant.id}/update`}
+                          onClick={e => e.stopPropagation()}
+                          className={clsx('text-sm font-semibold hover:underline', isSelected ? 'text-primary-700' : 'text-gray-900 hover:text-primary-600')}
+                        >
                           {tenant.name || '—'}
-                        </span>
+                        </Link>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">{tenant.contactEmail || '—'}</td>
                       <td className="px-6 py-4 text-sm text-gray-500">{tenant.contactPhone || '—'}</td>
@@ -199,14 +226,14 @@ function TenantListContent() {
                           },
                           {
                             label: t.tenant.disableTenant,
-                            icon: <span className="w-4 h-4 flex items-center justify-center text-red-500">✕</span>,
+                            icon: <Ban className="w-4 h-4" />,
                             danger: true,
                             disabled: !isActive,
                             onClick: () => handleDisable(tenant),
                           },
                           {
                             label: t.tenant.enableTenant,
-                            icon: <span className="w-4 h-4 flex items-center justify-center text-emerald-500">✓</span>,
+                            icon: <CheckCircle className="w-4 h-4" />,
                             disabled: isActive,
                             onClick: () => handleEnable(tenant),
                           },
