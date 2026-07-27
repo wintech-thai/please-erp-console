@@ -11,8 +11,8 @@ import { useLang } from '@/context/LanguageContext'
 
 function processRegistrationUrl(raw: string): string {
   if (typeof window === 'undefined') return raw
-  const erpDomain = window.location.hostname
-  return raw.replace('<REGISTER_SERVICE_DOMAIN>', erpDomain)
+  const tenantDomain = window.location.hostname.replace(/^admin/, 'tenant')
+  return raw.replace('<REGISTER_SERVICE_DOMAIN>', tenantDomain)
 }
 
 function StatusBadge({ status }: { status?: string | null }) {
