@@ -93,7 +93,7 @@ function SignupConfirmContent() {
         { Email: userInfo.email, UserName: userInfo.userName, Password: password, Name: firstName.trim(), LastName: lastName.trim(), OrgUserId: userInfo.orgUserId }
       )
       toast.success(t.signupConfirm.successMsg)
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      await new Promise(resolve => setTimeout(resolve, 3000))
       router.push('/login')
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || t.signupConfirm.errorMsg
