@@ -1,7 +1,7 @@
 import AdminSidebar from '@/components/AdminSidebar'
 import ComingSoonPage from '@/components/ComingSoonPage'
 
-const IS_TENANT_MODE = process.env.NEXT_PUBLIC_WEB_ROLE?.toUpperCase() === 'TENANT'
+const IS_TENANT_MODE = process.env.WEB_ROLE?.toUpperCase() === 'TENANT'
 
 export default function AdministratorLayout({ children }: { children: React.ReactNode }) {
   if (IS_TENANT_MODE) {

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, FormEvent } from 'react'
 import { useLang } from '@/context/LanguageContext'
 import { client } from '@/lib/axios'
-import { isAdmin } from '@/lib/web-role'
+import { useIsAdmin } from '@/context/IsAdminContext'
 import { toast } from 'sonner'
 import LeaveConfirmModal from '@/components/LeaveConfirmModal'
 
@@ -19,6 +19,7 @@ function DarkInput({ value, onChange, placeholder, type = 'text', disabled, requ
 
 export default function ProfileModal({ onClose }: Props) {
   const { t } = useLang()
+  const isAdmin = useIsAdmin()
   const [profile, setProfile] = useState<Profile>({ username: '', email: '', firstName: '', lastName: '', phoneNumber: '', secondaryEmail: '' })
   const [original, setOriginal] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)

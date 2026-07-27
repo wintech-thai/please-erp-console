@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const BACKEND_URL = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || ''
-const WEB_ROLE = process.env.NEXT_PUBLIC_WEB_ROLE || 'ADMIN'
+const WEB_ROLE = process.env.WEB_ROLE || 'ADMIN'
 
 export async function POST(request: NextRequest) {
   try {

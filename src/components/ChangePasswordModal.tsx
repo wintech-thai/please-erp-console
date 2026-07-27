@@ -3,7 +3,7 @@
 import { useState, FormEvent } from 'react'
 import { useLang } from '@/context/LanguageContext'
 import { client } from '@/lib/axios'
-import { isAdmin } from '@/lib/web-role'
+import { useIsAdmin } from '@/context/IsAdminContext'
 import { toast } from 'sonner'
 
 interface Props { onClose: () => void }
@@ -32,6 +32,7 @@ function PasswordField({ label, value, onChange, show, onToggle, autoComplete, p
 
 export default function ChangePasswordModal({ onClose }: Props) {
   const { t } = useLang()
+  const isAdmin = useIsAdmin()
   const [form, setForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
   const [show, setShow] = useState({ current: false, new: false })
   const [loading, setLoading] = useState(false)
