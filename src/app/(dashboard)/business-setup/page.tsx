@@ -1,5 +1,5 @@
-import ComingSoonPage from '@/components/ComingSoonPage'
+import { redirect } from 'next/navigation'
 
 export default function BusinessSetupPage() {
-  return <ComingSoonPage titleEn="Business Setup" titleTh="ตั้งค่าธุรกิจ" />
+  redirect('/business-setup/tenant')
 }

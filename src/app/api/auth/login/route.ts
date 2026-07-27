@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const BACKEND_URL = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || ''
-const WEB_ROLE = process.env.NEXT_PUBLIC_WEB_ROLE || 'ADMIN'
+const WEB_ROLE = process.env.WEB_ROLE || 'ADMIN'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
-    // Admin → /admin-api/AuthAdmin, Tenant → /api/OrgUser
+    // Admin → /admin-api/AuthAdmin, Tenant → /api/Auth
     const loginPath = WEB_ROLE === 'ADMIN'
       ? `${BACKEND_URL}/admin-api/AuthAdmin/org/global/action/Login`
-      : `${BACKEND_URL}/api/OrgUser/org/global/action/Login`
+      : `${BACKEND_URL}/api/Auth/org/temp/action/Login`
 
     const response = await fetch(loginPath, {
       method: 'POST',

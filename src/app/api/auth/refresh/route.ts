@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const BACKEND_URL = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || ''
-const WEB_ROLE = process.env.NEXT_PUBLIC_WEB_ROLE || 'ADMIN'
+const WEB_ROLE = process.env.WEB_ROLE || 'ADMIN'
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
 
     const refreshPath = WEB_ROLE === 'ADMIN'
       ? `${BACKEND_URL}/admin-api/AuthAdmin/org/global/action/Refresh`
-      : `${BACKEND_URL}/api/OrgUser/org/global/action/RefreshToken`
+      : `${BACKEND_URL}/api/Auth/org/temp/action/Refresh`
 
     const response = await fetch(refreshPath, {
       method: 'POST',

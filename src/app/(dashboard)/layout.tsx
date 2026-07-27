@@ -1,21 +1,10 @@
-'use client'
-
-import { LanguageProvider } from '@/context/LanguageContext'
-import Navbar from '@/components/Navbar'
-
-function DashboardShell({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col min-h-screen bg-gray-100">
-      <Navbar />
-      <main className="flex-1 flex flex-col overflow-hidden">{children}</main>
-    </div>
-  )
-}
+import DashboardLayoutClient from './_layout-client'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const isTenantMode = process.env.WEB_ROLE?.toUpperCase() === 'TENANT'
   return (
-    <LanguageProvider>
-      <DashboardShell>{children}</DashboardShell>
-    </LanguageProvider>
+    <DashboardLayoutClient isTenantMode={isTenantMode}>
+      {children}
+    </DashboardLayoutClient>
   )
 }

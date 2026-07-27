@@ -3,7 +3,7 @@
 import { useState, FormEvent } from 'react'
 import { useLang } from '@/context/LanguageContext'
 import { client } from '@/lib/axios'
-import { isAdmin } from '@/lib/web-role'
+import { useIsAdmin } from '@/context/IsAdminContext'
 import { toast } from 'sonner'
 
 interface Props { onClose: () => void }
@@ -32,18 +32,21 @@ function PasswordField({ label, value, onChange, show, onToggle, autoComplete, p
 
 export default function ChangePasswordModal({ onClose }: Props) {
   const { t } = useLang()
+  const isAdmin = useIsAdmin()
   const [form, setForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
   const [show, setShow] = useState({ current: false, new: false })
   const [loading, setLoading] = useState(false)
   const mismatch = form.confirmPassword !== '' && form.confirmPassword !== form.newPassword
-
-  const updatePath = isAdmin ? '/admin-api/OnlyAdmin/org/global/action/UpdatePassword' : '/api/OrgUser/org/global/action/UpdatePassword'
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (form.newPassword !== form.confirmPassword) return
     setLoading(true)
     const userName = localStorage.getItem('username') || ''
+    const orgId = localStorage.getItem('orgId') || 'global'
+    const updatePath = isAdmin
+      ? '/admin-api/OnlyAdmin/org/global/action/UpdatePassword'
+      : `/api/OnlyUser/org/${orgId}/action/UpdatePassword`
     try {
       await client.post(updatePath, { userName, currentPassword: form.currentPassword, newPassword: form.newPassword })
       toast.success(t.changePassword.success); onClose()
