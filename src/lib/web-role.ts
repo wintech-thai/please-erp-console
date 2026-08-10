@@ -1,11 +1,10 @@
 function detectWebRole(): string {
-  // In local dev, NEXT_PUBLIC_WEB_ROLE is read from .env.local at dev-server start
-  if (process.env.NEXT_PUBLIC_WEB_ROLE) return process.env.NEXT_PUBLIC_WEB_ROLE
-  // In deployed Docker image, NEXT_PUBLIC_ is not baked in — detect from hostname at runtime
+  // Browser: always detect from hostname — single Docker image serves both admin and tenant domains
   if (typeof window !== 'undefined') {
     return window.location.hostname.includes('tenant') ? 'TENANT' : 'ADMIN'
   }
-  return process.env.WEB_ROLE || 'ADMIN'
+  // Server-side (SSR): use env var
+  return process.env.NEXT_PUBLIC_WEB_ROLE || process.env.WEB_ROLE || 'ADMIN'
 }
 
 export const WEB_ROLE = detectWebRole()
