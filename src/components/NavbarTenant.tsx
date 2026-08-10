@@ -17,10 +17,14 @@ import { useBrand } from '@/context/BrandContext'
 
 const NAV_ITEMS = [
   { key: 'overview', href: '/overview', labelKey: 'overview' as const },
-  { key: 'business', href: '/business', labelKey: 'business' as const },
   { key: 'reportAnalytic', href: '/report-analytic', labelKey: 'reportAnalytic' as const },
   { key: 'administrator', href: '/administrator', labelKey: 'administrator' as const },
   { key: 'supportCase', href: '/support-case', labelKey: 'supportCase' as const },
+]
+
+const BUSINESS_SUB_ITEMS = [
+  { key: 'generalInfo', href: '/business/company-profile', labelKey: 'generalInfo' as const },
+  { key: 'masterData', href: '/business/master-data', labelKey: 'masterData' as const },
 ]
 
 export default function NavbarTenant() {
@@ -33,12 +37,15 @@ export default function NavbarTenant() {
   const [loggingOut, setLoggingOut] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [tenantMenuOpen, setTenantMenuOpen] = useState(false)
+  const [businessMenuOpen, setBusinessMenuOpen] = useState(false)
+  const [mobileBusinessOpen, setMobileBusinessOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [modal, setModal] = useState<'profile' | 'changePassword' | null>(null)
   const [username, setUsername] = useState('User')
 
   const tenantRef = useRef<HTMLDivElement>(null)
   const userRef = useRef<HTMLDivElement>(null)
+  const businessRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { setUsername(localStorage.getItem('username') || 'User') }, [])
 
@@ -59,6 +66,15 @@ export default function NavbarTenant() {
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [userMenuOpen])
+
+  useEffect(() => {
+    if (!businessMenuOpen) return
+    const handler = (e: MouseEvent) => {
+      if (!businessRef.current?.contains(e.target as Node)) setBusinessMenuOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [businessMenuOpen])
 
   async function handleLogout() {
     setLoggingOut(true)
@@ -144,8 +160,49 @@ export default function NavbarTenant() {
         <div className="hidden md:block w-px h-6 bg-white/20 flex-shrink-0" />
 
         {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-0.5 flex-nowrap flex-1 min-w-0 overflow-hidden">
-          {NAV_ITEMS.map(item => (
+        <nav className="hidden md:flex items-center gap-0.5 flex-nowrap flex-1 min-w-0">
+          <Link
+            href="/overview"
+            className={clsx(
+              'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors flex-shrink-0',
+              pathname.startsWith('/overview') ? 'bg-white/20 text-white' : 'text-white hover:bg-white/15'
+            )}
+          >
+            {t.nav.overview}
+          </Link>
+
+          {/* Business dropdown */}
+          <div ref={businessRef} className="relative flex-shrink-0">
+            <button
+              onClick={() => setBusinessMenuOpen(v => !v)}
+              className={clsx(
+                'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
+                pathname.startsWith('/business') ? 'bg-white/20 text-white' : 'text-white hover:bg-white/15'
+              )}
+            >
+              {t.nav.business}
+              <ChevronDown className={clsx('w-3.5 h-3.5 opacity-70 transition-transform', businessMenuOpen && 'rotate-180')} />
+            </button>
+            {businessMenuOpen && (
+              <div className="absolute left-0 top-full mt-1.5 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-50">
+                {BUSINESS_SUB_ITEMS.map(item => (
+                  <Link
+                    key={item.key}
+                    href={item.href}
+                    onClick={() => setBusinessMenuOpen(false)}
+                    className={clsx(
+                      'flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors',
+                      pathname.startsWith(item.href) ? 'text-primary-700 font-semibold bg-primary-50' : 'text-gray-700 hover:bg-gray-50'
+                    )}
+                  >
+                    {t.nav[item.labelKey]}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {NAV_ITEMS.filter(i => i.key !== 'overview').map(item => (
             <Link
               key={item.key}
               href={item.href}
@@ -285,7 +342,47 @@ export default function NavbarTenant() {
             </div>
           </div>
           <div className="border-t border-white/10 pt-1">
-            {NAV_ITEMS.map(item => (
+            <Link
+              href="/overview"
+              onClick={() => setMobileMenuOpen(false)}
+              className={clsx(
+                'flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                pathname.startsWith('/overview') ? 'bg-white/20 text-white' : 'text-white hover:bg-white/15'
+              )}
+            >
+              {t.nav.overview}
+            </Link>
+
+            {/* Business expandable */}
+            <button
+              onClick={() => setMobileBusinessOpen(v => !v)}
+              className={clsx(
+                'flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                pathname.startsWith('/business') ? 'bg-white/20 text-white' : 'text-white hover:bg-white/15'
+              )}
+            >
+              {t.nav.business}
+              <ChevronDown className={clsx('w-3.5 h-3.5 opacity-70 transition-transform', mobileBusinessOpen && 'rotate-180')} />
+            </button>
+            {mobileBusinessOpen && (
+              <div className="ml-3 border-l border-white/20 pl-3 flex flex-col gap-0.5 mb-1">
+                {BUSINESS_SUB_ITEMS.map(item => (
+                  <Link
+                    key={item.key}
+                    href={item.href}
+                    onClick={() => { setMobileMenuOpen(false); setMobileBusinessOpen(false) }}
+                    className={clsx(
+                      'flex items-center px-3 py-2 rounded-lg text-sm transition-colors',
+                      pathname.startsWith(item.href) ? 'bg-white/20 text-white font-semibold' : 'text-white/80 hover:bg-white/10'
+                    )}
+                  >
+                    {t.nav[item.labelKey]}
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            {NAV_ITEMS.filter(i => i.key !== 'overview').map(item => (
               <Link
                 key={item.key}
                 href={item.href}

@@ -169,16 +169,16 @@ export default function CompanyProfilePage() {
     <div className="flex flex-col min-h-full gap-5">
 
       {/* Hero banner */}
-      <div className="relative bg-gradient-to-br from-primary-700 via-primary-600 to-primary-800 rounded-2xl overflow-hidden shadow-md">
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute -right-16 -top-16 w-72 h-72 rounded-full bg-white/[0.04]" />
-          <div className="absolute right-20 -bottom-12 w-44 h-44 rounded-full bg-white/[0.05]" />
-          <div className="absolute left-1/3 -top-10 w-48 h-48 rounded-full bg-white/[0.03]" />
-        </div>
+      <div className="relative bg-gradient-to-br from-primary-700 via-primary-600 to-primary-800 rounded-2xl overflow-hidden shadow-lg">
+        {/* Diagonal sheen */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.03] to-white/[0.07] pointer-events-none" />
+        {/* Animated blobs */}
+        <div className="absolute -right-16 -top-16 w-72 h-72 rounded-full bg-white/[0.05] animate-pulse pointer-events-none" style={{ animationDuration: '4s' }} />
+        <div className="absolute right-20 -bottom-12 w-44 h-44 rounded-full bg-white/[0.07] animate-pulse pointer-events-none" style={{ animationDuration: '6s', animationDelay: '2s' }} />
+        <div className="absolute left-1/3 -top-10 w-48 h-48 rounded-full bg-white/[0.04] animate-pulse pointer-events-none" style={{ animationDuration: '5s', animationDelay: '1s' }} />
 
         <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-4 px-6 py-5">
-          {/* Logo avatar */}
-          <div className="w-14 h-14 rounded-xl bg-white/10 border border-white/20 flex-shrink-0 overflow-hidden flex items-center justify-center shadow-inner">
+          <div className="w-14 h-14 rounded-xl bg-white/10 border border-white/20 flex-shrink-0 overflow-hidden flex items-center justify-center shadow-inner ring-2 ring-white/10">
             {form.logoImageBase64 ? (
               <img src={form.logoImageBase64} alt="Logo" className="w-full h-full object-contain p-1" />
             ) : (
@@ -188,7 +188,6 @@ export default function CompanyProfilePage() {
             )}
           </div>
 
-          {/* Company info */}
           <div className="flex-1 min-w-0">
             <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">{cp.title}</p>
             <h2 className="text-white text-lg font-bold leading-snug mt-0.5 truncate">
@@ -219,7 +218,6 @@ export default function CompanyProfilePage() {
             </div>
           </div>
 
-          {/* Action buttons */}
           <div className="flex gap-2 sm:flex-shrink-0">
             {!editing ? (
               <button
@@ -257,84 +255,103 @@ export default function CompanyProfilePage() {
         </div>
       </div>
 
-      {/* Form card */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      {/* Form card — glows when editing */}
+      <div className={clsx(
+        'rounded-2xl overflow-hidden transition-all duration-500',
+        editing
+          ? 'bg-white shadow-xl shadow-primary-100/40 border border-primary-200/50 ring-1 ring-primary-300/20'
+          : 'bg-white shadow-lg shadow-gray-200/60 border border-gray-100/80'
+      )}>
         <div className="flex flex-col lg:flex-row">
 
           {/* Left: form fields */}
-          <div className="flex-1 divide-y divide-gray-100">
+          <div className="flex-1 divide-y divide-gray-100/80">
 
             {/* Section: General Info */}
-            <div className="px-6 py-5">
-              <SectionHeader icon={
-                <svg className="w-3.5 h-3.5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" /></svg>
-              } title={cp.generalInfoSection} />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                <FieldRow label={cp.fieldCompanyNameTh} editing={editing} value={form.orgNameTh}>
-                  <input type="text" value={form.orgNameTh} onChange={field('orgNameTh')} className={inputCls()} placeholder={cp.fieldCompanyNameTh} />
-                </FieldRow>
-                <FieldRow label={cp.fieldCompanyNameEn} editing={editing} value={form.orgNameEn}>
-                  <input type="text" value={form.orgNameEn} onChange={field('orgNameEn')} className={inputCls()} placeholder={cp.fieldCompanyNameEn} />
-                </FieldRow>
-                <FieldRow label={cp.fieldContactNameTh} editing={editing} value={form.contactNameTh}>
-                  <input type="text" value={form.contactNameTh} onChange={field('contactNameTh')} className={inputCls()} placeholder={cp.fieldContactNameTh} />
-                </FieldRow>
-                <FieldRow label={cp.fieldContactNameEn} editing={editing} value={form.contactNameEn}>
-                  <input type="text" value={form.contactNameEn} onChange={field('contactNameEn')} className={inputCls()} placeholder={cp.fieldContactNameEn} />
-                </FieldRow>
+            <div>
+              <div className="px-6 py-3.5 bg-gradient-to-r from-primary-50/80 via-primary-50/30 to-transparent border-b border-primary-100/40">
+                <SectionHeader icon={
+                  <svg className="w-3.5 h-3.5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" /></svg>
+                } title={cp.generalInfoSection} />
+              </div>
+              <div className="px-6 py-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FieldRow label={cp.fieldCompanyNameTh} editing={editing} value={form.orgNameTh}>
+                    <input type="text" value={form.orgNameTh} onChange={field('orgNameTh')} className={inputCls()} placeholder={cp.fieldCompanyNameTh} />
+                  </FieldRow>
+                  <FieldRow label={cp.fieldCompanyNameEn} editing={editing} value={form.orgNameEn}>
+                    <input type="text" value={form.orgNameEn} onChange={field('orgNameEn')} className={inputCls()} placeholder={cp.fieldCompanyNameEn} />
+                  </FieldRow>
+                  <FieldRow label={cp.fieldContactNameTh} editing={editing} value={form.contactNameTh}>
+                    <input type="text" value={form.contactNameTh} onChange={field('contactNameTh')} className={inputCls()} placeholder={cp.fieldContactNameTh} />
+                  </FieldRow>
+                  <FieldRow label={cp.fieldContactNameEn} editing={editing} value={form.contactNameEn}>
+                    <input type="text" value={form.contactNameEn} onChange={field('contactNameEn')} className={inputCls()} placeholder={cp.fieldContactNameEn} />
+                  </FieldRow>
+                </div>
               </div>
             </div>
 
             {/* Section: Address */}
-            <div className="px-6 py-5">
-              <SectionHeader icon={
-                <svg className="w-3.5 h-3.5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
-              } title={cp.addressSection} />
-              <div className="space-y-4 mt-4">
-                <FieldRow label={cp.fieldAddressTh} editing={editing} value={form.addressTh}>
-                  <textarea value={form.addressTh} onChange={field('addressTh')} rows={2} className={inputCls()} placeholder={cp.fieldAddressTh} />
-                </FieldRow>
-                <FieldRow label={cp.fieldAddressEn} editing={editing} value={form.addressEn}>
-                  <textarea value={form.addressEn} onChange={field('addressEn')} rows={2} className={inputCls()} placeholder={cp.fieldAddressEn} />
-                </FieldRow>
+            <div>
+              <div className="px-6 py-3.5 bg-gradient-to-r from-primary-50/80 via-primary-50/30 to-transparent border-b border-primary-100/40">
+                <SectionHeader icon={
+                  <svg className="w-3.5 h-3.5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
+                } title={cp.addressSection} />
+              </div>
+              <div className="px-6 py-5">
+                <div className="space-y-4">
+                  <FieldRow label={cp.fieldAddressTh} editing={editing} value={form.addressTh}>
+                    <textarea value={form.addressTh} onChange={field('addressTh')} rows={2} className={inputCls()} placeholder={cp.fieldAddressTh} />
+                  </FieldRow>
+                  <FieldRow label={cp.fieldAddressEn} editing={editing} value={form.addressEn}>
+                    <textarea value={form.addressEn} onChange={field('addressEn')} rows={2} className={inputCls()} placeholder={cp.fieldAddressEn} />
+                  </FieldRow>
+                </div>
               </div>
             </div>
 
             {/* Section: Contact */}
-            <div className="px-6 py-5">
-              <SectionHeader icon={
-                <svg className="w-3.5 h-3.5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" /></svg>
-              } title={cp.contactSection} />
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-                <FieldRow label={cp.fieldPhone} editing={editing} value={form.phone}>
-                  <input type="text" value={form.phone} onChange={field('phone')} className={inputCls()} placeholder={cp.fieldPhone} />
-                </FieldRow>
-                <FieldRow label={cp.fieldFax} editing={editing} value={form.fax}>
-                  <input type="text" value={form.fax} onChange={field('fax')} className={inputCls()} placeholder={cp.fieldFax} />
-                </FieldRow>
-                <FieldRow label={cp.fieldEmail} editing={editing} value={form.email}>
-                  <input type="email" value={form.email} onChange={field('email')} className={inputCls()} placeholder={cp.fieldEmail} />
-                </FieldRow>
+            <div>
+              <div className="px-6 py-3.5 bg-gradient-to-r from-primary-50/80 via-primary-50/30 to-transparent border-b border-primary-100/40">
+                <SectionHeader icon={
+                  <svg className="w-3.5 h-3.5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" /></svg>
+                } title={cp.contactSection} />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                <FieldRow label={cp.fieldTaxId} editing={editing} value={form.taxId}>
-                  <input type="text" value={form.taxId} onChange={field('taxId')} className={inputCls()} placeholder={cp.fieldTaxId} />
-                </FieldRow>
-                <FieldRow label={cp.fieldWebsite} editing={editing} value={form.website}>
-                  <input type="text" value={form.website} onChange={field('website')} className={inputCls()} placeholder={cp.fieldWebsite} />
-                </FieldRow>
+              <div className="px-6 py-5">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <FieldRow label={cp.fieldPhone} editing={editing} value={form.phone}>
+                    <input type="text" value={form.phone} onChange={field('phone')} className={inputCls()} placeholder={cp.fieldPhone} />
+                  </FieldRow>
+                  <FieldRow label={cp.fieldFax} editing={editing} value={form.fax}>
+                    <input type="text" value={form.fax} onChange={field('fax')} className={inputCls()} placeholder={cp.fieldFax} />
+                  </FieldRow>
+                  <FieldRow label={cp.fieldEmail} editing={editing} value={form.email}>
+                    <input type="email" value={form.email} onChange={field('email')} className={inputCls()} placeholder={cp.fieldEmail} />
+                  </FieldRow>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                  <FieldRow label={cp.fieldTaxId} editing={editing} value={form.taxId}>
+                    <input type="text" value={form.taxId} onChange={field('taxId')} className={inputCls()} placeholder={cp.fieldTaxId} />
+                  </FieldRow>
+                  <FieldRow label={cp.fieldWebsite} editing={editing} value={form.website}>
+                    <input type="text" value={form.website} onChange={field('website')} className={inputCls()} placeholder={cp.fieldWebsite} />
+                  </FieldRow>
+                </div>
               </div>
             </div>
 
           </div>
 
           {/* Right: Logo */}
-          <div className="w-full lg:w-64 xl:w-72 bg-gray-50/60 border-t lg:border-t-0 lg:border-l border-gray-100 p-6">
-            <SectionHeader icon={
-              <svg className="w-3.5 h-3.5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
-            } title={cp.logoSection} />
+          <div className="w-full lg:w-64 xl:w-72 bg-gray-50/40 border-t lg:border-t-0 lg:border-l border-gray-100/80">
+            <div className="px-6 py-3.5 bg-gradient-to-r from-primary-50/80 via-primary-50/30 to-transparent border-b border-primary-100/40">
+              <SectionHeader icon={
+                <svg className="w-3.5 h-3.5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
+              } title={cp.logoSection} />
+            </div>
 
-            <div className="mt-4">
+            <div className="p-6">
               {form.logoImageBase64 ? (
                 <div className="space-y-3">
                   <div className="aspect-square rounded-xl border border-gray-200 overflow-hidden bg-white flex items-center justify-center shadow-sm">
@@ -385,7 +402,7 @@ export default function CompanyProfilePage() {
               )}
             </div>
 
-            {editing && <p className="text-[10px] text-gray-400 mt-3 leading-relaxed">{cp.logoHint}</p>}
+            {editing && <p className="text-[10px] text-gray-400 px-6 pb-5 leading-relaxed">{cp.logoHint}</p>}
             <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/jpg" className="hidden" onChange={handleFileChange} />
           </div>
 
@@ -446,16 +463,16 @@ export default function CompanyProfilePage() {
 }
 
 function inputCls() {
-  return 'w-full text-sm rounded-lg px-3 py-2 outline-none transition-all resize-none border border-gray-200 bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400'
+  return 'w-full text-sm rounded-xl px-3 py-2 outline-none transition-all resize-none border border-gray-200 bg-gray-50/50 hover:bg-white hover:border-gray-300 focus:ring-2 focus:ring-primary-500/30 focus:border-primary-400 focus:bg-white focus:shadow-[0_0_0_4px_rgba(13,148,136,0.08)]'
 }
 
 function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
   return (
-    <div className="flex items-center gap-2">
-      <div className="w-7 h-7 rounded-lg bg-primary-50 flex items-center justify-center flex-shrink-0">
+    <div className="flex items-center gap-2.5">
+      <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary-500/20 to-primary-400/10 border border-primary-200/60 shadow-sm shadow-primary-300/30 flex items-center justify-center flex-shrink-0">
         {icon}
       </div>
-      <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">{title}</p>
+      <p className="text-xs font-bold text-gray-700 uppercase tracking-widest">{title}</p>
     </div>
   )
 }
@@ -467,15 +484,25 @@ function FieldRow({ label, children, editing, value }: {
   value?: string
 }) {
   return (
-    <div>
-      <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
+    <div className={!editing ? 'group' : undefined}>
+      <label className="block text-[10px] font-bold text-primary-600 uppercase tracking-widest mb-1.5">
         {label}
       </label>
       {editing
         ? children
-        : <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line min-h-[1.5rem]">
-            {value || <span className="text-gray-300">—</span>}
-          </p>
+        : <div className="relative -mx-2 px-2 py-1.5 rounded-lg transition-all duration-200 group-hover:bg-primary-50/50 overflow-hidden">
+            {/* Accent bar grows from center on hover */}
+            <div className="absolute left-0 top-1 bottom-1 w-0.5 rounded-full bg-gradient-to-b from-primary-500 to-primary-300 scale-y-0 group-hover:scale-y-100 transition-transform duration-300 origin-center" />
+            <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line min-h-[1.5rem] pr-5">
+              {value || <span className="text-gray-300">—</span>}
+            </p>
+            <svg
+              className="absolute right-2 top-2 w-3.5 h-3.5 text-primary-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+          </div>
       }
     </div>
   )

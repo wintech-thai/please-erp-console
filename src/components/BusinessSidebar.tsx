@@ -6,36 +6,38 @@ import { useState } from 'react'
 import clsx from 'clsx'
 import { useLang } from '@/context/LanguageContext'
 
+const GENERAL_INFO_ITEMS = [
+  {
+    href: '/business/company-profile',
+    labelKey: 'companyProfile' as const,
+    icon: (
+      <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+      </svg>
+    ),
+  },
+]
+
+const MASTER_DATA_ITEMS = [
+  {
+    href: '/business/master-data',
+    labelKey: 'masterData' as const,
+    icon: (
+      <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+      </svg>
+    ),
+  },
+]
+
 export default function BusinessSidebar() {
   const { t } = useLang()
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
 
-  const sections = [
-    {
-      label: t.nav.generalInfo,
-      items: [
-        {
-          href: '/business/company-profile',
-          label: t.nav.companyProfile,
-          icon: (
-            <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-            </svg>
-          ),
-        },
-        {
-          href: '/business/master-data',
-          label: t.nav.masterData,
-          icon: (
-            <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
-            </svg>
-          ),
-        },
-      ],
-    },
-  ]
+  const isMasterData = pathname.startsWith('/business/master-data')
+  const sectionLabel = isMasterData ? t.nav.masterData : t.nav.generalInfo
+  const items = isMasterData ? MASTER_DATA_ITEMS : GENERAL_INFO_ITEMS
 
   return (
     <aside
@@ -61,36 +63,32 @@ export default function BusinessSidebar() {
 
       {!collapsed && (
         <div className="px-4 pt-5 pb-3">
-          <p className="text-xs font-semibold text-white/40 uppercase tracking-widest">Business</p>
+          <p className="text-xs font-semibold text-white/40 uppercase tracking-widest">{sectionLabel}</p>
         </div>
       )}
       {collapsed && <div className="pt-5 pb-3" />}
 
       <nav className="flex flex-col gap-1 px-2">
-        {sections.map((section) => (
-          <div key={section.label}>
-            {section.items.map((item) => {
-              const isActive = pathname.startsWith(item.href)
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  title={collapsed ? item.label : undefined}
-                  className={clsx(
-                    'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                    collapsed && 'justify-center px-2',
-                    isActive
-                      ? 'bg-white/20 text-white'
-                      : 'text-white/75 hover:bg-white/15 hover:text-white'
-                  )}
-                >
-                  {item.icon}
-                  {!collapsed && <span className="truncate">{item.label}</span>}
-                </Link>
-              )
-            })}
-          </div>
-        ))}
+        {items.map((item) => {
+          const isActive = pathname.startsWith(item.href)
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              title={collapsed ? t.nav[item.labelKey] : undefined}
+              className={clsx(
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                collapsed && 'justify-center px-2',
+                isActive
+                  ? 'bg-white/20 text-white'
+                  : 'text-white/75 hover:bg-white/15 hover:text-white'
+              )}
+            >
+              {item.icon}
+              {!collapsed && <span className="truncate">{t.nav[item.labelKey]}</span>}
+            </Link>
+          )
+        })}
       </nav>
     </aside>
   )
