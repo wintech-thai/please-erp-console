@@ -1,5 +1,5 @@
-import ComingSoonPage from '@/components/ComingSoonPage'
+import { redirect } from 'next/navigation'
 
 export default function BusinessPage() {
-  return <ComingSoonPage titleEn="Business" titleTh="Business" />
+  redirect('/business/company-profile')
 }

@@ -2,6 +2,7 @@
 
 export interface UserItem {
   adminUserId: string
+  orgUserId?: string | null
   userId: string
   userName: string
   userEmail: string
@@ -575,6 +576,43 @@ export interface SubmitLinePaymentTxPayload {
   SourceBankAccountNo?: string
   DestinationBankCode?: string
   DestinationAccountNo?: string
+}
+
+// ─── Company Profile ─────────────────────────────────────────────────────────
+
+export interface CompanyProfile {
+  orgId?: string | null
+  orgCustomId?: string | null
+  orgName?: string | null
+  orgNameTh?: string | null
+  orgNameEn?: string | null
+  contactNameTh?: string | null
+  contactNameEn?: string | null
+  addressTh?: string | null
+  addressEn?: string | null
+  phone?: string | null
+  fax?: string | null
+  email?: string | null
+  taxId?: string | null
+  website?: string | null
+  logoImageBase64?: string | null
+  logoImagePath?: string | null
+  logoImageUrl?: string | null
+}
+
+export interface UpdateCompanyProfilePayload {
+  OrgNameTh?: string
+  OrgNameEn?: string
+  ContactNameTh?: string
+  ContactNameEn?: string
+  AddressTh?: string
+  AddressEn?: string
+  Phone?: string
+  Fax?: string
+  Email?: string
+  TaxId?: string
+  Website?: string
+  LogoImageBase64?: string | null
 }
 
 // ─── Common ──────────────────────────────────────────────────────────────────
