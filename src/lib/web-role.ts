@@ -1,9 +1,12 @@
 function detectWebRole(): string {
-  // Browser: always detect from hostname — single Docker image serves both admin and tenant domains
   if (typeof window !== 'undefined') {
-    return window.location.hostname.includes('tenant') ? 'TENANT' : 'ADMIN'
+    const hostname = window.location.hostname
+    // Production/staging: explicit hostname matching wins
+    if (hostname.includes('tenant')) return 'TENANT'
+    if (hostname.includes('admin')) return 'ADMIN'
+    // Local dev (localhost): respect env var baked at build time
+    return (process.env.NEXT_PUBLIC_WEB_ROLE as string) || 'ADMIN'
   }
-  // Server-side (SSR): use env var
   return process.env.NEXT_PUBLIC_WEB_ROLE || process.env.WEB_ROLE || 'ADMIN'
 }
 

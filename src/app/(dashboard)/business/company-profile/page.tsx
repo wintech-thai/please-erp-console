@@ -319,18 +319,13 @@ export default function CompanyProfilePage() {
                 } title={cp.contactSection} />
               </div>
               <div className="px-6 py-5">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                   <FieldRow label={cp.fieldPhone} editing={editing} value={form.phone}>
                     <input type="text" value={form.phone} onChange={field('phone')} className={inputCls()} placeholder={cp.fieldPhone} />
-                  </FieldRow>
-                  <FieldRow label={cp.fieldFax} editing={editing} value={form.fax}>
-                    <input type="text" value={form.fax} onChange={field('fax')} className={inputCls()} placeholder={cp.fieldFax} />
                   </FieldRow>
                   <FieldRow label={cp.fieldEmail} editing={editing} value={form.email}>
                     <input type="email" value={form.email} onChange={field('email')} className={inputCls()} placeholder={cp.fieldEmail} />
                   </FieldRow>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                   <FieldRow label={cp.fieldTaxId} editing={editing} value={form.taxId}>
                     <input type="text" value={form.taxId} onChange={field('taxId')} className={inputCls()} placeholder={cp.fieldTaxId} />
                   </FieldRow>
