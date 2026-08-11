@@ -43,7 +43,7 @@ function DeleteModal({ name, onConfirm, onCancel, deleting }: {
 
 // ─── Get doc number modal ─────────────────────────────────────────────────────
 
-function GetDocNumberModal({ config, onClose }: { config: DocumentNumberConfig | null; onClose: () => void }) {
+function GetDocNumberModal({ config, onClose, onSaved }: { config: DocumentNumberConfig | null; onClose: () => void; onSaved?: () => void }) {
   const { t } = useLang()
   const dn = t.documentNumber
   const [loading, setLoading] = useState(false)
@@ -59,6 +59,7 @@ function GetDocNumberModal({ config, onClose }: { config: DocumentNumberConfig |
       setResult((res.data as { documentNumber?: string; DocumentNumber?: string }).documentNumber
         || (res.data as { documentNumber?: string; DocumentNumber?: string }).DocumentNumber
         || String(res.data))
+      onSaved?.()
     } catch { toast.error(dn.getDocError); onClose() } finally { setLoading(false) }
   }
 
@@ -344,20 +345,21 @@ function DocumentNumberContent() {
                 <th className="px-6 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">{dn.colYearOffset}</th>
                 <th className="px-6 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">{dn.colResetType}</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{dn.colCurrentSeq}</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{dn.colLastDocNo}</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{dn.fieldTags}</th>
                 <th className="w-14 px-4 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Action</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} className="py-16 text-center">
+                <tr><td colSpan={10} className="py-16 text-center">
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-7 h-7 rounded-full border-2 border-primary-500 border-t-transparent animate-spin" />
                     <span className="text-sm text-gray-400">{t.admin.loading}</span>
                   </div>
                 </td></tr>
               ) : configs.length === 0 ? (
-                <tr><td colSpan={9} className="py-16 text-center">
+                <tr><td colSpan={10} className="py-16 text-center">
                   <FileText className="w-7 h-7 mx-auto mb-2 text-gray-300" />
                   <p className="text-sm text-gray-400">{dn.noData}</p>
                 </td></tr>
@@ -384,10 +386,13 @@ function DocumentNumberContent() {
                         className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 w-4 h-4 cursor-pointer"
                       />
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-primary-50 text-primary-700">
+                    <td className="px-6 py-4" onClick={e => e.stopPropagation()}>
+                      <button
+                        onClick={() => router.push(`/business/document-number/${cfg.id}/update`)}
+                        className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-primary-50 text-primary-700 hover:bg-primary-100 hover:text-primary-800 transition-colors"
+                      >
                         {cfg.documentType}
-                      </span>
+                      </button>
                     </td>
                     <td className="px-6 py-4 text-gray-700">{cfg.documentFormat}</td>
                     <td className="px-6 py-4 text-center text-gray-600">{cfg.seqDigit}</td>
@@ -406,6 +411,11 @@ function DocumentNumberContent() {
                           ? <>{cfg.currentSequenceKey} / {cfg.currentSequenceNo}</>
                           : <span className="text-gray-300">—</span>}
                       </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      {cfg.lastDocumentNumber
+                        ? <span className="text-xs font-mono font-semibold text-primary-700 bg-primary-50 px-2 py-0.5 rounded whitespace-nowrap">{cfg.lastDocumentNumber}</span>
+                        : <span className="text-gray-300 text-xs">—</span>}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-1.5">
@@ -454,7 +464,7 @@ function DocumentNumberContent() {
         </div>
       </div>
 
-      <GetDocNumberModal config={getDocModal} onClose={() => setGetDocModal(null)} />
+      <GetDocNumberModal config={getDocModal} onClose={() => setGetDocModal(null)} onSaved={fetchConfigs} />
       <ManageSequenceModal config={manageSeqModal} onClose={() => setManageSeqModal(null)} onSaved={fetchConfigs} />
       {deleteModal.open && (
         <DeleteModal

@@ -16,6 +16,7 @@ export interface DocumentNumberConfig {
   yearOffset: number
   currentSequenceKey?: string | null
   currentSequenceNo: number
+  lastDocumentNumber?: string | null
   createdDate?: string | null
 }
 
