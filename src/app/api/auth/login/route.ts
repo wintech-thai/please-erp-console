@@ -27,7 +27,21 @@ export async function POST(request: NextRequest) {
     const accessToken: string = data.token?.access_token || ''
     const refreshToken: string = data.token?.refresh_token || ''
     const username: string = data.userName || body.username || ''
-    const orgId = 'global'
+
+    let orgId = data.orgId || ''
+    if (!orgId && WEB_ROLE !== 'ADMIN' && accessToken) {
+      try {
+        const payload = JSON.parse(Buffer.from(accessToken.split('.')[1], 'base64').toString())
+        orgId = payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/groupsid']
+          || payload.groupsid
+          || payload.GroupSid
+          || payload.org_id
+          || 'global'
+      } catch {
+        orgId = 'global'
+      }
+    }
+    if (!orgId) orgId = 'global'
 
     const res = NextResponse.json({ success: true, accessToken, refreshToken, username, orgId })
 

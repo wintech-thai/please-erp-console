@@ -54,6 +54,8 @@ function UsersContent() {
     }
   }, [highlightIdParam, pathname, searchParams])
 
+  const getUserId = (user: UserItem) => user.adminUserId || user.orgUserId || ''
+
   const autoSelectFirstRef = useRef(false)
 
   const fetchUsers = async (currentPage: number, keyword: string = '') => {
@@ -82,7 +84,7 @@ function UsersContent() {
   useEffect(() => {
     if (!autoSelectFirstRef.current) return
     autoSelectFirstRef.current = false
-    if (users.length > 0) selectRow(users[0].adminUserId)
+    if (users.length > 0) selectRow(getUserId(users[0]))
     else { setSelectedRowId(null); sessionStorage.removeItem(SS_KEY) }
   }, [users])
 
@@ -95,7 +97,7 @@ function UsersContent() {
 
   const handleDisable = async (user: UserItem) => {
     try {
-      await userApi.disableUserById(user.adminUserId)
+      await userApi.disableUserById(getUserId(user))
       toast.success(`${user.userName} ${t.users.disabledSuccess}`)
       fetchUsers(page, appliedSearch)
     } catch (err: unknown) {
@@ -106,7 +108,7 @@ function UsersContent() {
 
   const handleEnable = async (user: UserItem) => {
     try {
-      await userApi.enableUserById(user.adminUserId)
+      await userApi.enableUserById(getUserId(user))
       toast.success(`${user.userName} ${t.users.enabledSuccess}`)
       fetchUsers(page, appliedSearch)
     } catch (err: unknown) {
@@ -173,7 +175,7 @@ function UsersContent() {
   const displayTotal = appliedSearch ? filteredUsers.length : total
 
   const toggleAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) setSelectedIds(filteredUsers.map(u => u.adminUserId))
+    if (e.target.checked) setSelectedIds(filteredUsers.map(u => getUserId(u)))
     else setSelectedIds([])
   }
 
@@ -256,7 +258,7 @@ function UsersContent() {
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.users.colRoles}</th>
                 <th className="px-6 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.users.colInitialUser}</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.users.colStatus}</th>
-                <th className="w-14 px-4 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.users.colAction}</th>
+                <th className="w-14 px-4 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{t.users.colAction}</th>
               </tr>
             </thead>
             <tbody>
@@ -279,12 +281,13 @@ function UsersContent() {
                   const roleList = parseCsv(user.rolesList)
                   const active = isActive(user.userStatus)
                   const isPending = user.userStatus?.toLowerCase() === 'pending'
-                  const isSelected = selectedRowId === user.adminUserId
+                  const uid = getUserId(user)
+                  const isSelected = selectedRowId === uid
                   const isInitial = user.isOrgInitialUser === 'YES'
                   return (
                     <tr
-                      key={user.adminUserId}
-                      onClick={() => selectRow(user.adminUserId)}
+                      key={uid}
+                      onClick={() => selectRow(uid)}
                       className={clsx(
                         'border-l-[3px] transition-all cursor-pointer',
                         isSelected
@@ -295,15 +298,15 @@ function UsersContent() {
                       <td className="px-6 py-4" onClick={e => e.stopPropagation()}>
                         <input
                           type="checkbox"
-                          checked={selectedIds.includes(user.adminUserId)}
-                          onChange={() => toggleOne(user.adminUserId)}
+                          checked={selectedIds.includes(uid)}
+                          onChange={() => toggleOne(uid)}
                           className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 w-4 h-4"
                         />
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <Link
-                            href={`/administrator/users/${user.adminUserId}/update?customRoleId=${encodeURIComponent(user.customRoleId ?? '')}&customRoleName=${encodeURIComponent(user.customRoleName ?? '')}`}
+                            href={`/administrator/users/${uid}/update?customRoleId=${encodeURIComponent(user.customRoleId ?? '')}&customRoleName=${encodeURIComponent(user.customRoleName ?? '')}`}
                             onClick={e => e.stopPropagation()}
                             className={clsx('text-sm font-semibold hover:underline', isSelected ? 'text-primary-700' : 'text-gray-900 hover:text-primary-600')}
                           >
@@ -365,7 +368,7 @@ function UsersContent() {
                             label: t.users.resetPasswordLink,
                             icon: <Key className="w-4 h-4" />,
                             disabled: isPending || !active,
-                            onClick: () => handleGetResetLink(user.adminUserId),
+                            onClick: () => handleGetResetLink(uid),
                           },
                         ]} />
                       </td>

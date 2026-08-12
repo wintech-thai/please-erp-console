@@ -51,6 +51,8 @@ async function handlePostgres(req: NextRequest): Promise<Response> {
   const returnDocs = size > 0
 
   const apiBase = process.env.BACKEND_URL || ''
+  const webRole = process.env.WEB_ROLE || 'ADMIN'
+  const isAdmin = webRole === 'ADMIN'
   const accessToken = req.cookies.get('accessToken')?.value
   const incomingAuth = req.headers.get('Authorization')
   const authHeader = incomingAuth
@@ -70,7 +72,11 @@ async function handlePostgres(req: NextRequest): Promise<Response> {
     GroupBy: 'api',
   }
 
-  const apiRes = await fetch(`${apiBase}/admin-api/AdminAuditLog/org/global/action/QueryAuditLogs`, {
+  const auditLogUrl = isAdmin
+    ? `${apiBase}/admin-api/AdminAuditLog/org/global/action/QueryAuditLogs`
+    : `${apiBase}/api/AuditLog/org/${orgId}/action/QueryAuditLogs`
+
+  const apiRes = await fetch(auditLogUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

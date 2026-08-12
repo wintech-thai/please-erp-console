@@ -46,7 +46,13 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
       const savedId = localStorage.getItem('selectedTenantOrgId')
       const saved = savedId ? activeOrgs.find(o => (o.orgCustomId ?? o.orgId) === savedId) : null
-      setSelectedOrgState(saved ?? activeOrgs[0] ?? null)
+      const initial = saved ?? activeOrgs[0] ?? null
+      setSelectedOrgState(initial)
+      if (initial) {
+        const orgKey = initial.orgCustomId || initial.orgId || ''
+        localStorage.setItem('orgId', orgKey)
+        localStorage.setItem('selectedTenantOrgId', orgKey)
+      }
     } catch {
       setAllowedOrgs([])
     } finally {
@@ -58,7 +64,9 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
   const setSelectedOrg = useCallback((org: AllowedOrg) => {
     setSelectedOrgState(org)
-    localStorage.setItem('selectedTenantOrgId', (org.orgCustomId ?? org.orgId) || '')
+    const orgKey = org.orgCustomId || org.orgId || ''
+    localStorage.setItem('selectedTenantOrgId', orgKey)
+    localStorage.setItem('orgId', orgKey)
   }, [])
 
   return (

@@ -2,9 +2,14 @@ import { client } from '@/lib/axios'
 import { isAdmin } from '@/lib/web-role'
 import type { UserItem, GetUsersPayload, InviteUserPayload, InviteUserWithLinkPayload, UpdateUserPayload } from './types'
 
-const BASE = isAdmin
-  ? '/admin-api/AdminUser/org/global/action'
-  : '/api/OrgUser/org/global/action'
+function getOrgId() {
+  return typeof window !== 'undefined' ? localStorage.getItem('orgId') || '' : ''
+}
+
+function getBase() {
+  if (isAdmin) return '/admin-api/AdminUser/org/global/action'
+  return `/api/OrganizationUser/org/${getOrgId()}/action`
+}
 
 const REG_BASE = isAdmin
   ? '/admin-api/RegistrationAdmin/org'
@@ -12,40 +17,44 @@ const REG_BASE = isAdmin
 
 export const userApi = {
   getUsers: (payload: GetUsersPayload = {}) =>
-    client.post<{ users: UserItem[] }>(`${BASE}/GetUsers`, payload),
+    client.post<{ users: UserItem[] }>(`${getBase()}/GetUsers`, payload),
 
   getUserCount: (payload: GetUsersPayload = {}) =>
-    client.post<{ count: number }>(`${BASE}/GetUserCount`, payload),
+    client.post<{ count: number }>(`${getBase()}/GetUserCount`, payload),
 
   getUserById: (userId: string) =>
-    client.get<{ user: UserItem }>(`${BASE}/GetUserById/${userId}`),
+    client.get<{ user: UserItem }>(`${getBase()}/GetUserById/${userId}`),
 
   inviteUser: (payload: InviteUserPayload) =>
-    client.post(`${BASE}/InviteUser`, payload),
+    client.post(`${getBase()}/InviteUser`, payload),
 
   inviteUserWithLink: (payload: InviteUserWithLinkPayload) =>
-    client.post(`${BASE}/InviteUserWithLink`, payload),
+    client.post(`${getBase()}/InviteUserWithLink`, payload),
 
   updateUserById: (userId: string, payload: UpdateUserPayload) =>
-    client.post(`${BASE}/UpdateUserById/${userId}`, payload),
+    client.post(`${getBase()}/UpdateUserById/${userId}`, payload),
 
   enableUserById: (userId: string) =>
-    client.post(`${BASE}/EnableUserById/${userId}`, {}),
+    client.post(`${getBase()}/EnableUserById/${userId}`, {}),
 
   disableUserById: (userId: string) =>
-    client.post(`${BASE}/DisableUserById/${userId}`, {}),
+    client.post(`${getBase()}/DisableUserById/${userId}`, {}),
 
   deleteUserById: (userId: string) =>
-    client.delete(`${BASE}/DeleteUserById/${userId}`),
+    client.delete(`${getBase()}/DeleteUserById/${userId}`),
 
   getForgotPasswordLink: (userId: string) =>
-    client.get<{ forgotPasswordUrl?: string; resetLink?: string }>(`${BASE}/GetForgotPasswordLink/${userId}`),
+    client.get<{ forgotPasswordUrl?: string; resetLink?: string }>(`${getBase()}/GetForgotPasswordLink/${userId}`),
 
-  getRoles: () =>
-    client.post<{ roles: { id: string; name: string; description?: string }[] }>(
-      `${isAdmin ? '/admin-api/AdminRole' : '/api/Role'}/org/global/action/GetRoles`,
+  getRoles: () => {
+    const base = isAdmin
+      ? '/admin-api/AdminRole/org/global/action'
+      : `/api/Role/org/${getOrgId()}/action`
+    return client.post<{ roles: { id: string; name: string; description?: string }[] }>(
+      `${base}/GetRoles`,
       { offset: 0, limit: 100 }
-    ),
+    )
+  },
 
   confirmForgotPassword: (orgId: string, token: string, payload: { username: string; email: string; password: string; orgUserId?: string }) =>
     client.post(

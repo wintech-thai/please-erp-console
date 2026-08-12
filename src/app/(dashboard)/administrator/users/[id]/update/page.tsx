@@ -49,7 +49,7 @@ function UpdateUserPageInner() {
     ])
       .then(([userRes, rolesRes, sysRolesRes]) => {
         const raw = userRes.data as Record<string, unknown>
-        const u = (raw.user ?? raw.adminUser) as any
+        const u = (raw.user ?? raw.adminUser ?? raw.orgUser) as any
         if (!u) throw new Error('User not found in response')
         setUser(u as UserItem)
         setTags(u.tags ? u.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : [])
