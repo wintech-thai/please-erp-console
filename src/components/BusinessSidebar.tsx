@@ -43,7 +43,9 @@ const DB_ICON = (
 function MasterDataSubNav({ collapsed }: { collapsed: boolean }) {
   const { t } = useLang()
   const searchParams = useSearchParams()
-  const typeParam = searchParams.get('type') ?? 'LocationType'
+  const pathname = usePathname()
+  const typeFromPath = MASTER_DATA_REFS.find(({ refType }) => pathname.includes(`/master-data/${refType}`))?.refType
+  const typeParam = typeFromPath ?? searchParams.get('type') ?? 'LocationType'
   const [expanded, setExpanded] = useState(true)
 
   return (
