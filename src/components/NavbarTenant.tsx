@@ -23,6 +23,7 @@ const NAV_ITEMS = [
 ]
 
 const BUSINESS_SUB_ITEMS = [
+  { key: 'inventory', href: '/business/inventory', labelKey: 'inventory' as const },
   { key: 'generalInfo', href: '/business/company-profile', labelKey: 'generalInfo' as const },
   { key: 'masterData', href: '/business/master-data', labelKey: 'masterData' as const },
 ]

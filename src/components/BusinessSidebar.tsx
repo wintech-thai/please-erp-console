@@ -27,6 +27,27 @@ const GENERAL_INFO_ITEMS = [
   },
 ]
 
+const INVENTORY_ITEMS = [
+  {
+    href: '/business/inventory/locations',
+    labelKey: 'inventoryLocation' as const,
+    icon: (
+      <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 7l9-4 9 4-9 4-9-4zm0 0v10l9 4m0-14v14m9-14v10l-9 4" />
+      </svg>
+    ),
+  },
+  {
+    href: '/business/inventory/items',
+    labelKey: 'inventoryItem' as const,
+    icon: (
+      <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+      </svg>
+    ),
+  },
+]
+
 const MASTER_DATA_REFS = [
   { refType: 'LocationType', labelKey: 'locationType' as const },
   { refType: 'ItemType',     labelKey: 'itemType'     as const },
@@ -110,8 +131,9 @@ export default function BusinessSidebar() {
   const [collapsed, setCollapsed] = useState(false)
 
   const isMasterData = pathname.startsWith('/business/master-data')
-  const sectionLabel = isMasterData ? t.nav.masterData : t.nav.generalInfo
-  const items = isMasterData ? [] : GENERAL_INFO_ITEMS
+  const isInventory = pathname.startsWith('/business/inventory')
+  const sectionLabel = isInventory ? t.nav.inventory : isMasterData ? t.nav.masterData : t.nav.generalInfo
+  const items = isInventory ? INVENTORY_ITEMS : isMasterData ? [] : GENERAL_INFO_ITEMS
 
   return (
     <aside
