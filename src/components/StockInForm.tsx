@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { AxiosError } from 'axios'
-import { ChevronLeft, Plus, Pencil, Trash2, CheckCircle2, XCircle } from 'lucide-react'
+import { ChevronLeft, Plus, Pencil, Trash2, CheckCircle2, XCircle, PackagePlus, MapPin, ListChecks } from 'lucide-react'
 import clsx from 'clsx'
 import { useLang } from '@/context/LanguageContext'
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges'
@@ -24,6 +24,15 @@ function newLocalKey() {
 function fmtNumber(n?: number | null) {
   if (n == null) return '—'
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function DocStatusBadge({ status, label }: { status?: string | null; label: string }) {
+  const styles = status === 'Approved'
+    ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+    : status === 'Cancelled'
+      ? 'bg-red-50 text-red-600 ring-1 ring-red-200'
+      : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
+  return <span className={clsx('px-2.5 py-1 rounded-full text-xs font-semibold', styles)}>{label}</span>
 }
 
 // ─── Item modal ────────────────────────────────────────────────────────────────
@@ -195,6 +204,7 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
 
   const isPending = mode === 'add' || doc?.documentStatus === 'Pending'
   const readOnly = mode === 'edit' && !isPending
+  const [highlightedKey, setHighlightedKey] = useState<string | null>(null)
 
   useEffect(() => {
     inventoryLocationApi.getLocations({ limit: 100 }).then(res => {
@@ -308,18 +318,26 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
     )
   }
 
+  const statusLabel = doc?.documentStatus === 'Approved' ? si.statusApproved
+    : doc?.documentStatus === 'Cancelled' ? si.statusCancelled
+    : si.statusPending
+
   return (
     <div className="flex flex-col overflow-hidden h-[calc(100dvh-5rem)] sm:h-[calc(100dvh-6.5rem)]">
-      <div className="flex-none flex items-center gap-3 mb-6">
-        <button onClick={() => guardNavigation(() => router.back())} className="p-2 rounded-lg text-gray-500 hover:bg-gray-200 transition-colors">
+      <div className="flex-none bg-gradient-to-r from-primary-600 to-primary-700 rounded-2xl px-5 py-4 mb-6 flex items-center gap-3 text-white shadow-sm">
+        <button onClick={() => guardNavigation(() => router.back())} className="p-2 rounded-lg text-white/80 hover:bg-white/15 hover:text-white transition-colors flex-none">
           <ChevronLeft className="w-5 h-5" />
         </button>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+        <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center flex-none">
+          <PackagePlus className="w-5 h-5 text-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-lg font-bold truncate">
             {mode === 'add' ? si.createTitle : si.editTitle}
           </h1>
-          {doc?.documentNo && <p className="text-sm text-gray-500 mt-0.5">{doc.documentNo}</p>}
+          {doc?.documentNo && <p className="text-xs text-primary-100 mt-0.5">{doc.documentNo}</p>}
         </div>
+        {mode === 'edit' && <DocStatusBadge status={doc?.documentStatus} label={statusLabel} />}
       </div>
 
       {readOnly && (
@@ -331,6 +349,12 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
       <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
         <div className="flex-1 overflow-y-auto flex flex-col gap-4 pb-2">
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 px-7 py-6">
+            <div className="flex items-center gap-2 mb-5">
+              <div className="w-7 h-7 rounded-lg bg-primary-50 flex items-center justify-center flex-none">
+                <MapPin className="w-3.5 h-3.5 text-primary-600" />
+              </div>
+              <h3 className="text-sm font-bold text-gray-900">{si.docInfoTitle}</h3>
+            </div>
             <div className="max-w-2xl space-y-4">
               <FormField label={si.fieldToLocation} required>
                 <SearchableSelect
@@ -356,7 +380,12 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
           {/* Items */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex-1">
             <div className="px-7 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-gray-900">{si.itemsTitle}</h3>
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-primary-50 flex items-center justify-center flex-none">
+                  <ListChecks className="w-3.5 h-3.5 text-primary-600" />
+                </div>
+                <h3 className="text-sm font-bold text-gray-900">{si.itemsTitle}</h3>
+              </div>
               {!readOnly && (
                 <button type="button" onClick={handleAddItem} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">
                   <Plus className="w-3.5 h-3.5" />
@@ -381,19 +410,30 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
                 <tbody>
                   {items.length === 0 ? (
                     <tr><td colSpan={readOnly ? 7 : 8} className="py-10 text-center text-sm text-gray-400">{si.noItems}</td></tr>
-                  ) : items.map((item, idx) => (
-                    <tr key={item.localKey} className={clsx('border-b border-gray-50', idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/40')}>
+                  ) : items.map((item, idx) => {
+                    const highlighted = highlightedKey === item.localKey
+                    return (
+                    <tr
+                      key={item.localKey}
+                      onClick={() => setHighlightedKey(prev => prev === item.localKey ? null : item.localKey)}
+                      className={clsx(
+                        'border-b border-gray-50 cursor-pointer transition-colors',
+                        highlighted
+                          ? '!bg-primary-100 border-l-[3px] border-l-primary-500'
+                          : idx % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-50/40 hover:bg-gray-100/50'
+                      )}
+                    >
                       <td className="px-5 py-3 font-medium text-gray-800">{item.itemCode || '—'}</td>
                       <td className="px-5 py-3 text-gray-600">{item.itemName || '—'}</td>
-                      <td className="px-5 py-3 text-right font-mono text-gray-800">{fmtNumber(item.itemQuantity)}</td>
-                      <td className="px-5 py-3 text-right font-mono text-gray-600">{fmtNumber(item.itemUnitPrice)}</td>
-                      <td className="px-5 py-3 text-right font-mono font-semibold text-gray-900">{fmtNumber(item.itemAmount)}</td>
+                      <td className="px-5 py-3 text-right tabular-nums text-gray-800">{fmtNumber(item.itemQuantity)}</td>
+                      <td className="px-5 py-3 text-right tabular-nums text-gray-600">{fmtNumber(item.itemUnitPrice)}</td>
+                      <td className="px-5 py-3 text-right tabular-nums font-semibold text-gray-900">{fmtNumber(item.itemAmount)}</td>
                       <td className="px-5 py-3 text-gray-500">{item.lotId || '—'}</td>
                       <td className="px-5 py-3 text-gray-500">
                         {projectOptions.find(p => p.code === item.project)?.description || item.project || '—'}
                       </td>
                       {!readOnly && (
-                        <td className="px-5 py-3">
+                        <td className="px-5 py-3" onClick={e => e.stopPropagation()}>
                           <div className="flex items-center gap-1">
                             <button type="button" onClick={() => handleEditItem(item)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors">
                               <Pencil className="w-3.5 h-3.5" />
@@ -405,13 +445,14 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
                         </td>
                       )}
                     </tr>
-                  ))}
+                    )
+                  })}
                 </tbody>
                 {items.length > 0 && (
                   <tfoot>
-                    <tr className="border-t-2 border-gray-100">
-                      <td colSpan={4} className="px-5 py-3 text-xs font-bold text-gray-600 uppercase tracking-wide text-right">{si.colTotalAmount}</td>
-                      <td className="px-5 py-3 text-right font-mono font-bold text-gray-900">{fmtNumber(totalAmount)}</td>
+                    <tr className="border-t-2 border-primary-100 bg-primary-50/60">
+                      <td colSpan={4} className="px-5 py-3 text-xs font-bold text-primary-700 uppercase tracking-wide text-right">{si.colTotalAmount}</td>
+                      <td className="px-5 py-3 text-right tabular-nums font-bold text-primary-800">{fmtNumber(totalAmount)}</td>
                       <td colSpan={readOnly ? 2 : 3} />
                     </tr>
                   </tfoot>

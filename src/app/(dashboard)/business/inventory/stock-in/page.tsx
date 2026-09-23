@@ -154,6 +154,10 @@ function StockInContent() {
     params.delete('highlight')
     const qs = params.toString()
     window.history.replaceState(null, '', qs ? `${pathname}?${qs}` : pathname)
+    // Coming back here from Add/Edit (Next.js's router cache can otherwise reuse this
+    // already-mounted page instance and skip the initial-mount fetch, showing stale data).
+    fetchDocs(searchTerm, statusFilter, timeRange, 1)
+    setPage(1)
     const timer = setTimeout(() => {
       document.getElementById(`stock-in-row-${highlightIdParam}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }, 300)
