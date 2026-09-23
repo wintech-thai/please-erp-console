@@ -46,12 +46,43 @@ const INVENTORY_ITEMS = [
       </svg>
     ),
   },
+  {
+    href: '/business/inventory/stock-in',
+    labelKey: 'stockIn' as const,
+    dividerBefore: true,
+    icon: (
+      <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" />
+      </svg>
+    ),
+  },
+  {
+    href: '/business/inventory/stock-out',
+    labelKey: 'stockOut' as const,
+    comingSoon: true,
+    icon: (
+      <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 20V8m0 0l-4 4m4-4l4 4M4 4h16" />
+      </svg>
+    ),
+  },
+  {
+    href: '/business/inventory/stock-transfer',
+    labelKey: 'stockTransfer' as const,
+    comingSoon: true,
+    icon: (
+      <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h13m0 0l-4-4m4 4l-4 4M20 17H7m0 0l4 4m-4-4l4-4" />
+      </svg>
+    ),
+  },
 ]
 
 const MASTER_DATA_REFS = [
   { refType: 'LocationType', labelKey: 'locationType' as const },
   { refType: 'ItemType',     labelKey: 'itemType'     as const },
   { refType: 'ItemUnit',     labelKey: 'itemUnit'     as const },
+  { refType: 'Project',      labelKey: 'project'      as const },
 ]
 
 const DB_ICON = (
@@ -167,22 +198,37 @@ export default function BusinessSidebar() {
       <nav className="flex flex-col gap-1 px-2">
         {items.map((item) => {
           const isActive = pathname.startsWith(item.href)
+          const dividerBefore = 'dividerBefore' in item && item.dividerBefore
+          const comingSoon = 'comingSoon' in item && item.comingSoon
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              title={collapsed ? t.nav[item.labelKey] : undefined}
-              className={clsx(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                collapsed && 'justify-center px-2',
-                isActive
-                  ? 'bg-white/20 text-white'
-                  : 'text-white/75 hover:bg-white/15 hover:text-white'
-              )}
-            >
-              {item.icon}
-              {!collapsed && <span className="truncate">{t.nav[item.labelKey]}</span>}
-            </Link>
+            <div key={item.href}>
+              {dividerBefore && !collapsed && <div className="my-1.5 border-t border-white/10" />}
+              <Link
+                href={item.href}
+                title={collapsed ? t.nav[item.labelKey] : undefined}
+                className={clsx(
+                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                  collapsed && 'justify-center px-2',
+                  isActive
+                    ? 'bg-white/20 text-white'
+                    : 'text-white/75 hover:bg-white/15 hover:text-white'
+                )}
+              >
+                {item.icon}
+                {!collapsed && (
+                  comingSoon ? (
+                    <span className="flex flex-col flex-1 min-w-0 leading-tight">
+                      <span className="truncate">{t.nav[item.labelKey]}</span>
+                      <span className="text-[9px] font-semibold uppercase tracking-wide text-white/45">
+                        {t.nav.comingSoon}
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="truncate flex-1 min-w-0">{t.nav[item.labelKey]}</span>
+                  )
+                )}
+              </Link>
+            </div>
           )
         })}
       </nav>

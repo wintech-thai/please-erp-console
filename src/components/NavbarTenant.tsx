@@ -23,9 +23,9 @@ const NAV_ITEMS = [
 ]
 
 const BUSINESS_SUB_ITEMS = [
-  { key: 'inventory', href: '/business/inventory', labelKey: 'inventory' as const },
-  { key: 'generalInfo', href: '/business/company-profile', labelKey: 'generalInfo' as const },
   { key: 'masterData', href: '/business/master-data', labelKey: 'masterData' as const },
+  { key: 'generalInfo', href: '/business/company-profile', labelKey: 'generalInfo' as const },
+  { key: 'inventory', href: '/business/inventory', labelKey: 'inventory' as const, dividerBefore: true },
 ]
 
 export default function NavbarTenant() {
@@ -187,17 +187,19 @@ export default function NavbarTenant() {
             {businessMenuOpen && (
               <div className="absolute left-0 top-full mt-1.5 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-50">
                 {BUSINESS_SUB_ITEMS.map(item => (
-                  <Link
-                    key={item.key}
-                    href={item.href}
-                    onClick={() => setBusinessMenuOpen(false)}
-                    className={clsx(
-                      'flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors',
-                      pathname.startsWith(item.href) ? 'text-primary-700 font-semibold bg-primary-50' : 'text-gray-700 hover:bg-gray-50'
-                    )}
-                  >
-                    {t.nav[item.labelKey]}
-                  </Link>
+                  <div key={item.key}>
+                    {item.dividerBefore && <div className="my-1 border-t border-gray-100" />}
+                    <Link
+                      href={item.href}
+                      onClick={() => setBusinessMenuOpen(false)}
+                      className={clsx(
+                        'flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors',
+                        pathname.startsWith(item.href) ? 'text-primary-700 font-semibold bg-primary-50' : 'text-gray-700 hover:bg-gray-50'
+                      )}
+                    >
+                      {t.nav[item.labelKey]}
+                    </Link>
+                  </div>
                 ))}
               </div>
             )}
@@ -368,17 +370,19 @@ export default function NavbarTenant() {
             {mobileBusinessOpen && (
               <div className="ml-3 border-l border-white/20 pl-3 flex flex-col gap-0.5 mb-1">
                 {BUSINESS_SUB_ITEMS.map(item => (
-                  <Link
-                    key={item.key}
-                    href={item.href}
-                    onClick={() => { setMobileMenuOpen(false); setMobileBusinessOpen(false) }}
-                    className={clsx(
-                      'flex items-center px-3 py-2 rounded-lg text-sm transition-colors',
-                      pathname.startsWith(item.href) ? 'bg-white/20 text-white font-semibold' : 'text-white/80 hover:bg-white/10'
-                    )}
-                  >
-                    {t.nav[item.labelKey]}
-                  </Link>
+                  <div key={item.key}>
+                    {item.dividerBefore && <div className="my-1 border-t border-white/15" />}
+                    <Link
+                      href={item.href}
+                      onClick={() => { setMobileMenuOpen(false); setMobileBusinessOpen(false) }}
+                      className={clsx(
+                        'flex items-center px-3 py-2 rounded-lg text-sm transition-colors',
+                        pathname.startsWith(item.href) ? 'bg-white/20 text-white font-semibold' : 'text-white/80 hover:bg-white/10'
+                      )}
+                    >
+                      {t.nav[item.labelKey]}
+                    </Link>
+                  </div>
                 ))}
               </div>
             )}

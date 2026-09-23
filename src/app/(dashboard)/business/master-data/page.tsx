@@ -15,6 +15,7 @@ const REF_TYPE_GROUPS = [
       { refType: 'LocationType', labelKey: 'locationType' as const },
       { refType: 'ItemType',     labelKey: 'itemType'     as const },
       { refType: 'ItemUnit',     labelKey: 'itemUnit'     as const },
+      { refType: 'Project',      labelKey: 'project'      as const },
     ],
   },
 ]
@@ -205,7 +206,7 @@ function MasterDataContent() {
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{md.colCode}</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{md.colDescription}</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{md.colTags}</th>
-                <th className="w-14 px-4 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">{md.colAction}</th>
+                <th className="w-28 px-4 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{md.colAction}</th>
               </tr>
             </thead>
             <tbody>
