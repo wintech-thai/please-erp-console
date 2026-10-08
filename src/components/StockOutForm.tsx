@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { AxiosError } from 'axios'
-import { ChevronLeft, Plus, Pencil, Trash2, CheckCircle2, XCircle, PackagePlus, MapPin, ListChecks, FileJson } from 'lucide-react'
+import { ChevronLeft, Plus, Pencil, Trash2, CheckCircle2, XCircle, PackageMinus, MapPin, ListChecks, FileJson } from 'lucide-react'
 import clsx from 'clsx'
 import { useLang } from '@/context/LanguageContext'
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges'
@@ -37,6 +37,8 @@ function DocStatusBadge({ status, label }: { status?: string | null; label: stri
 }
 
 // ─── Item modal ────────────────────────────────────────────────────────────────
+// Unlike Stock-In, unit price/total are never entered here — the server fills
+// them in from the item's live stock cost at approve time (per spec).
 
 function ItemModal({ initial, itemOptions, projectOptions, onSave, onClose }: {
   initial: LocalItem | null
@@ -46,15 +48,12 @@ function ItemModal({ initial, itemOptions, projectOptions, onSave, onClose }: {
   onClose: () => void
 }) {
   const { t } = useLang()
-  const si = t.stockIn
+  const so = t.stockOut
 
   const [itemId, setItemId] = useState(initial?.itemId || '')
   const [quantity, setQuantity] = useState(initial?.itemQuantity?.toString() || '')
-  const [unitPrice, setUnitPrice] = useState(initial?.itemUnitPrice?.toString() || '')
   const [lotId, setLotId] = useState(initial?.lotId || '')
   const [project, setProject] = useState(initial?.project || '')
-
-  const total = (parseFloat(quantity) || 0) * (parseFloat(unitPrice) || 0)
 
   const itemSelectOptions = useMemo(
     () => itemOptions.map(i => ({ code: i.id, label: i.code, sublabel: i.nameTh })),
@@ -65,15 +64,9 @@ function ItemModal({ initial, itemOptions, projectOptions, onSave, onClose }: {
     [projectOptions]
   )
 
-  function handleItemSelect(id: string) {
-    setItemId(id)
-    const picked = itemOptions.find(i => i.id === id)
-    if (picked && !unitPrice && picked.price != null) setUnitPrice(String(picked.price))
-  }
-
   function handleSave() {
     const qty = parseFloat(quantity)
-    if (!itemId || !qty || qty <= 0) { toast.error(si.itemRequiredFields); return }
+    if (!itemId || !qty || qty <= 0) { toast.error(so.itemRequiredFields); return }
     const picked = itemOptions.find(i => i.id === itemId)
     onSave({
       localKey: initial?.localKey || newLocalKey(),
@@ -82,8 +75,8 @@ function ItemModal({ initial, itemOptions, projectOptions, onSave, onClose }: {
       itemCode: picked?.code,
       itemName: picked?.nameTh,
       itemQuantity: qty,
-      itemUnitPrice: parseFloat(unitPrice) || 0,
-      itemAmount: total,
+      itemUnitPrice: initial?.itemUnitPrice ?? undefined,
+      itemAmount: initial?.itemAmount ?? undefined,
       lotId: lotId || undefined,
       project: project || undefined,
     })
@@ -93,45 +86,45 @@ function ItemModal({ initial, itemOptions, projectOptions, onSave, onClose }: {
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div className="w-full max-w-lg rounded-2xl shadow-2xl bg-white overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="px-6 py-4 border-b border-gray-100">
-          <h3 className="text-base font-bold text-gray-900">{initial ? si.itemModalTitleEdit : si.itemModalTitleAdd}</h3>
+          <h3 className="text-base font-bold text-gray-900">{initial ? so.itemModalTitleEdit : so.itemModalTitleAdd}</h3>
         </div>
         <div className="px-6 py-5 space-y-4">
-          <FormField label={si.itemFieldItem} required>
+          <FormField label={so.itemFieldItem} required>
             <SearchableSelect
               options={itemSelectOptions}
               value={itemId}
-              onChange={handleItemSelect}
-              placeholder={si.itemFieldItemPlaceholder}
+              onChange={setItemId}
+              placeholder={so.itemFieldItemPlaceholder}
             />
           </FormField>
           <div className="grid grid-cols-2 gap-4">
-            <FormField label={si.itemFieldQuantity} required>
+            <FormField label={so.itemFieldQuantity} required>
               <input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} className={inputCls} min={0} step="any" />
             </FormField>
-            <FormField label={si.itemFieldUnitPrice}>
-              <input type="number" value={unitPrice} onChange={e => setUnitPrice(e.target.value)} className={inputCls} min={0} step="any" />
+            <FormField label={so.itemFieldUnitPrice}>
+              <input type="text" value={so.priceCalcNotice} readOnly className={clsx(inputCls, 'bg-gray-50 text-gray-400 italic')} />
             </FormField>
           </div>
-          <FormField label={si.itemFieldTotalAmount}>
-            <input type="text" value={fmtNumber(total)} readOnly className={clsx(inputCls, 'bg-gray-50 text-gray-500')} />
+          <FormField label={so.itemFieldTotalAmount}>
+            <input type="text" value={so.priceCalcNotice} readOnly className={clsx(inputCls, 'bg-gray-50 text-gray-400 italic')} />
           </FormField>
           <div className="grid grid-cols-2 gap-4">
-            <FormField label={si.itemFieldLot}>
+            <FormField label={so.itemFieldLot}>
               <input type="text" value={lotId} onChange={e => setLotId(e.target.value)} className={inputCls} />
             </FormField>
-            <FormField label={si.itemFieldProject}>
+            <FormField label={so.itemFieldProject}>
               <SearchableSelect
                 options={projectSelectOptions}
                 value={project}
                 onChange={setProject}
-                placeholder={si.itemFieldProjectPlaceholder}
+                placeholder={so.itemFieldProjectPlaceholder}
               />
             </FormField>
           </div>
         </div>
         <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3">
-          <button onClick={onClose} className={cancelBtnCls}>{si.itemModalCancel}</button>
-          <button onClick={handleSave} className={primaryBtnCls}>{si.itemModalOk}</button>
+          <button onClick={onClose} className={cancelBtnCls}>{so.itemModalCancel}</button>
+          <button onClick={handleSave} className={primaryBtnCls}>{so.itemModalOk}</button>
         </div>
       </div>
     </div>
@@ -181,9 +174,9 @@ interface Props {
   inventoryDocId?: string
 }
 
-export default function StockInForm({ mode, inventoryDocId }: Props) {
+export default function StockOutForm({ mode, inventoryDocId }: Props) {
   const { t } = useLang()
-  const si = t.stockIn
+  const so = t.stockOut
   const router = useRouter()
 
   const { options: projectOptions } = useMasterRefOptions('Project')
@@ -193,7 +186,7 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
   const [loading, setLoading] = useState(mode === 'edit')
   const [doc, setDoc] = useState<InventoryDocItem | null>(null)
   const [description, setDescription] = useState('')
-  const [toLocationId, setToLocationId] = useState('')
+  const [fromLocationId, setFromLocationId] = useState('')
   const [items, setItems] = useState<LocalItem[]>([])
   const [saving, setSaving] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
@@ -225,10 +218,10 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
         const d = res.data
         setDoc(d)
         setDescription(d.description || '')
-        setToLocationId(d.toLocationId || '')
+        setFromLocationId(d.fromLocationId || '')
         setItems((d.items || []).map(it => ({ ...it, localKey: newLocalKey() })))
       })
-      .catch(() => toast.error(si.loadDocFailed))
+      .catch(() => toast.error(so.loadDocFailed))
       .finally(() => setLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, inventoryDocId])
@@ -254,38 +247,39 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
   }
 
   const totalAmount = items.reduce((s, i) => s + (i.itemAmount || 0), 0)
+  const hasAnyAmount = items.some(i => i.itemAmount != null)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const location = locations.find(l => l.id === toLocationId)
-    if (!toLocationId) { toast.error(si.requiredFields); return }
+    const location = locations.find(l => l.id === fromLocationId)
+    if (!fromLocationId) { toast.error(so.requiredFields); return }
 
     const payload = {
       description: description || undefined,
-      toLocationId,
-      toLocationCode: location?.code,
-      toLocationName: location?.name,
-      items: items.map(({ localKey, ...rest }) => rest),
+      fromLocationId,
+      fromLocationCode: location?.code,
+      fromLocationName: location?.name,
+      items: items.map(({ localKey, itemUnitPrice, itemAmount, ...rest }) => rest),
     }
 
     setSaving(true)
     try {
       if (mode === 'add') {
-        const res = await inventoryDocApi.addStockIn(payload)
-        toast.success(si.addSuccess)
+        const res = await inventoryDocApi.addStockOut(payload)
+        toast.success(so.addSuccess)
         setIsDirty(false)
         const newId = res.data.inventoryDoc?.id
-        router.push(newId ? `/business/inventory/stock-in?highlight=${newId}` : '/business/inventory/stock-in')
+        router.push(newId ? `/business/inventory/stock-out?highlight=${newId}` : '/business/inventory/stock-out')
       } else if (inventoryDocId) {
-        const res = await inventoryDocApi.updateStockInById(inventoryDocId, payload)
-        if (res.data.status !== 'OK') { toast.error(res.data.description || si.failedToUpdate); return }
-        toast.success(si.updateSuccess)
+        const res = await inventoryDocApi.updateStockOutById(inventoryDocId, payload)
+        if (res.data.status !== 'OK') { toast.error(res.data.description || so.failedToUpdate); return }
+        toast.success(so.updateSuccess)
         setIsDirty(false)
-        router.push(`/business/inventory/stock-in?highlight=${inventoryDocId}`)
+        router.push(`/business/inventory/stock-out?highlight=${inventoryDocId}`)
       }
     } catch (err) {
       const axiosErr = err as AxiosError
-      toast.error(axiosErr.message || (mode === 'add' ? si.failedToAdd : si.failedToUpdate))
+      toast.error(axiosErr.message || (mode === 'add' ? so.failedToAdd : so.failedToUpdate))
     } finally {
       setSaving(false)
     }
@@ -296,17 +290,17 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
     setActioning(true)
     try {
       if (confirmAction === 'approve') {
-        await inventoryDocApi.approveStockInById(inventoryDocId)
-        toast.success(si.approveSuccess)
+        await inventoryDocApi.approveStockOutById(inventoryDocId)
+        toast.success(so.approveSuccess)
       } else {
-        await inventoryDocApi.cancelStockInById(inventoryDocId)
-        toast.success(si.cancelDocSuccess)
+        await inventoryDocApi.cancelStockOutById(inventoryDocId)
+        toast.success(so.cancelDocSuccess)
       }
       setConfirmAction(null)
       setIsDirty(false)
-      router.push(`/business/inventory/stock-in?highlight=${inventoryDocId}`)
+      router.push(`/business/inventory/stock-out?highlight=${inventoryDocId}`)
     } catch {
-      toast.error(confirmAction === 'approve' ? si.failedToApprove : si.failedToCancelDoc)
+      toast.error(confirmAction === 'approve' ? so.failedToApprove : so.failedToCancelDoc)
     } finally {
       setActioning(false)
     }
@@ -320,9 +314,9 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
     )
   }
 
-  const statusLabel = doc?.documentStatus === 'Approved' ? si.statusApproved
-    : doc?.documentStatus === 'Cancelled' ? si.statusCancelled
-    : si.statusPending
+  const statusLabel = doc?.documentStatus === 'Approved' ? so.statusApproved
+    : doc?.documentStatus === 'Cancelled' ? so.statusCancelled
+    : so.statusPending
 
   return (
     <div className="flex flex-col overflow-hidden h-[calc(100dvh-5rem)] sm:h-[calc(100dvh-6.5rem)]">
@@ -331,11 +325,11 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
           <ChevronLeft className="w-5 h-5" />
         </button>
         <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center flex-none">
-          <PackagePlus className="w-5 h-5 text-white" />
+          <PackageMinus className="w-5 h-5 text-white" />
         </div>
         <div className="flex-1 min-w-0">
           <h1 className="text-lg font-bold truncate">
-            {mode === 'add' ? si.createTitle : si.editTitle}
+            {mode === 'add' ? so.createTitle : so.editTitle}
           </h1>
           {doc?.documentNo && <p className="text-xs text-primary-100 mt-0.5">{doc.documentNo}</p>}
         </div>
@@ -354,7 +348,7 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
 
       {readOnly && (
         <div className="flex-none mb-4 px-4 py-3 rounded-lg bg-amber-50 text-amber-700 text-sm border border-amber-100">
-          {si.readOnlyNotice}
+          {so.readOnlyNotice}
         </div>
       )}
 
@@ -365,19 +359,19 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
               <div className="w-7 h-7 rounded-lg bg-primary-50 flex items-center justify-center flex-none">
                 <MapPin className="w-3.5 h-3.5 text-primary-600" />
               </div>
-              <h3 className="text-sm font-bold text-gray-900">{si.docInfoTitle}</h3>
+              <h3 className="text-sm font-bold text-gray-900">{so.docInfoTitle}</h3>
             </div>
             <div className="max-w-2xl space-y-4">
-              <FormField label={si.fieldToLocation} required>
+              <FormField label={so.fieldFromLocation} required>
                 <SearchableSelect
                   options={locationSelectOptions}
-                  value={toLocationId}
-                  onChange={v => { setToLocationId(v); markDirty() }}
-                  placeholder={si.fieldToLocationPlaceholder}
+                  value={fromLocationId}
+                  onChange={v => { setFromLocationId(v); markDirty() }}
+                  placeholder={so.fieldFromLocationPlaceholder}
                   disabled={readOnly}
                 />
               </FormField>
-              <FormField label={si.fieldDescription}>
+              <FormField label={so.fieldDescription}>
                 <textarea
                   value={description}
                   onChange={e => { setDescription(e.target.value); markDirty() }}
@@ -396,12 +390,12 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
                 <div className="w-7 h-7 rounded-lg bg-primary-50 flex items-center justify-center flex-none">
                   <ListChecks className="w-3.5 h-3.5 text-primary-600" />
                 </div>
-                <h3 className="text-sm font-bold text-gray-900">{si.itemsTitle}</h3>
+                <h3 className="text-sm font-bold text-gray-900">{so.itemsTitle}</h3>
               </div>
               {!readOnly && (
                 <button type="button" onClick={handleAddItem} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">
                   <Plus className="w-3.5 h-3.5" />
-                  {si.addItemBtn}
+                  {so.addItemBtn}
                 </button>
               )}
             </div>
@@ -409,19 +403,19 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50/70 border-b border-gray-100">
-                    <th className="px-5 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{si.colItem}</th>
-                    <th className="px-5 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{si.colItemName}</th>
-                    <th className="px-5 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{si.colQuantity}</th>
-                    <th className="px-5 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{si.colUnitPrice}</th>
-                    <th className="px-5 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{si.colTotalAmount}</th>
-                    <th className="px-5 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{si.colLot}</th>
-                    <th className="px-5 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{si.colProject}</th>
+                    <th className="px-5 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{so.colItem}</th>
+                    <th className="px-5 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{so.colItemName}</th>
+                    <th className="px-5 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{so.colQuantity}</th>
+                    <th className="px-5 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{so.colUnitPrice}</th>
+                    <th className="px-5 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{so.colTotalAmount}</th>
+                    <th className="px-5 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{so.colLot}</th>
+                    <th className="px-5 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{so.colProject}</th>
                     {!readOnly && <th className="w-20 px-5 py-2.5" />}
                   </tr>
                 </thead>
                 <tbody>
                   {items.length === 0 ? (
-                    <tr><td colSpan={readOnly ? 7 : 8} className="py-10 text-center text-sm text-gray-400">{si.noItems}</td></tr>
+                    <tr><td colSpan={readOnly ? 7 : 8} className="py-10 text-center text-sm text-gray-400">{so.noItems}</td></tr>
                   ) : items.map((item, idx) => {
                     const highlighted = highlightedKey === item.localKey
                     return (
@@ -438,8 +432,12 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
                       <td className="px-5 py-3 font-medium text-gray-800">{item.itemCode || '—'}</td>
                       <td className="px-5 py-3 text-gray-600">{item.itemName || '—'}</td>
                       <td className="px-5 py-3 text-right tabular-nums text-gray-800">{fmtNumber(item.itemQuantity)}</td>
-                      <td className="px-5 py-3 text-right tabular-nums text-gray-600">{fmtNumber(item.itemUnitPrice)}</td>
-                      <td className="px-5 py-3 text-right tabular-nums font-semibold text-gray-900">{fmtNumber(item.itemAmount)}</td>
+                      <td className="px-5 py-3 text-right tabular-nums text-gray-400 italic">
+                        {item.itemUnitPrice != null ? fmtNumber(item.itemUnitPrice) : so.priceCalcNotice}
+                      </td>
+                      <td className="px-5 py-3 text-right tabular-nums font-semibold text-gray-400 italic">
+                        {item.itemAmount != null ? fmtNumber(item.itemAmount) : so.priceCalcNotice}
+                      </td>
                       <td className="px-5 py-3 text-gray-500">{item.lotId || '—'}</td>
                       <td className="px-5 py-3 text-gray-500">
                         {projectOptions.find(p => p.code === item.project)?.description || item.project || '—'}
@@ -460,10 +458,10 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
                     )
                   })}
                 </tbody>
-                {items.length > 0 && (
+                {items.length > 0 && hasAnyAmount && (
                   <tfoot>
                     <tr className="border-t-2 border-primary-100 bg-primary-50/60">
-                      <td colSpan={4} className="px-5 py-3 text-xs font-bold text-primary-700 uppercase tracking-wide text-right">{si.colTotalAmount}</td>
+                      <td colSpan={4} className="px-5 py-3 text-xs font-bold text-primary-700 uppercase tracking-wide text-right">{so.colTotalAmount}</td>
                       <td className="px-5 py-3 text-right tabular-nums font-bold text-primary-800">{fmtNumber(totalAmount)}</td>
                       <td colSpan={readOnly ? 2 : 3} />
                     </tr>
@@ -478,19 +476,19 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
           {mode === 'edit' && isPending && (
             <>
               <button type="button" onClick={() => setConfirmAction('cancel')} className="px-5 py-2.5 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors">
-                {si.cancelDocBtn}
+                {so.cancelDocBtn}
               </button>
               <button type="button" onClick={() => setConfirmAction('approve')} className="px-5 py-2.5 text-sm font-medium text-primary-700 border border-primary-200 rounded-lg hover:bg-primary-50 transition-colors">
-                {si.approveBtn}
+                {so.approveBtn}
               </button>
             </>
           )}
           <button type="button" onClick={() => guardNavigation(() => router.back())} className={cancelBtnCls}>
-            {si.cancel}
+            {so.cancel}
           </button>
           {!readOnly && (
             <button type="submit" disabled={saving} className={primaryBtnCls}>
-              {saving ? si.saving : si.save}
+              {saving ? so.saving : so.save}
             </button>
           )}
         </div>
@@ -508,11 +506,11 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
 
       {confirmAction && (
         <ConfirmModal
-          title={confirmAction === 'approve' ? si.approveConfirmTitle : si.cancelDocConfirmTitle}
-          desc={confirmAction === 'approve' ? si.approveConfirmDesc : si.cancelDocConfirmDesc}
-          confirmLabel={confirmAction === 'approve' ? si.approveBtn : si.confirm}
-          confirmingLabel={confirmAction === 'approve' ? si.approving : si.cancelling}
-          cancelLabel={si.cancel}
+          title={confirmAction === 'approve' ? so.approveConfirmTitle : so.cancelDocConfirmTitle}
+          desc={confirmAction === 'approve' ? so.approveConfirmDesc : so.cancelDocConfirmDesc}
+          confirmLabel={confirmAction === 'approve' ? so.approveBtn : so.confirm}
+          confirmingLabel={confirmAction === 'approve' ? so.approving : so.cancelling}
+          cancelLabel={so.cancel}
           confirming={actioning}
           danger={confirmAction === 'cancel'}
           onConfirm={handleConfirmAction}

@@ -59,7 +59,6 @@ const INVENTORY_ITEMS = [
   {
     href: '/business/inventory/stock-out',
     labelKey: 'stockOut' as const,
-    comingSoon: true,
     icon: (
       <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 20V8m0 0l-4 4m4-4l4 4M4 4h16" />
@@ -69,7 +68,6 @@ const INVENTORY_ITEMS = [
   {
     href: '/business/inventory/stock-transfer',
     labelKey: 'stockTransfer' as const,
-    comingSoon: true,
     icon: (
       <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h13m0 0l-4-4m4 4l-4 4M20 17H7m0 0l4 4m-4-4l4-4" />
@@ -78,12 +76,64 @@ const INVENTORY_ITEMS = [
   },
 ]
 
-const MASTER_DATA_REFS = [
-  { refType: 'LocationType', labelKey: 'locationType' as const },
-  { refType: 'ItemType',     labelKey: 'itemType'     as const },
-  { refType: 'ItemUnit',     labelKey: 'itemUnit'     as const },
-  { refType: 'Project',      labelKey: 'project'      as const },
+const SALE_MANAGEMENT_ITEMS = [
+  {
+    href: '/business/sale-management/customer-data',
+    labelKey: 'customerData' as const,
+    comingSoon: true,
+    icon: (
+      <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+      </svg>
+    ),
+  },
+  {
+    href: '/business/sale-management/credit-sale',
+    labelKey: 'creditSale' as const,
+    dividerBefore: true,
+    comingSoon: true,
+    icon: (
+      <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 14l6-6m-5-1h.01M15 15h.01M3 6h18M3 6v12a2 2 0 002 2h14a2 2 0 002-2V6M3 6l2-3h14l2 3" />
+      </svg>
+    ),
+  },
+  {
+    href: '/business/sale-management/cash-sale',
+    labelKey: 'cashSale' as const,
+    comingSoon: true,
+    icon: (
+      <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V6m0 2v8m0 0v2m0-2c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+  },
 ]
+
+type MasterDataRefLabelKey = 'locationType' | 'itemType' | 'itemUnit' | 'project' | 'service' | 'customerType' | 'customerGroup'
+type MasterDataRefItem = { refType: string; labelKey: MasterDataRefLabelKey }
+
+const MASTER_DATA_GROUPS: { groupKey: 'inventory' | 'saleManagement'; items: MasterDataRefItem[] }[] = [
+  {
+    groupKey: 'inventory',
+    items: [
+      { refType: 'LocationType', labelKey: 'locationType' },
+      { refType: 'ItemType',     labelKey: 'itemType' },
+      { refType: 'ItemUnit',     labelKey: 'itemUnit' },
+      { refType: 'Project',      labelKey: 'project' },
+    ],
+  },
+  {
+    groupKey: 'saleManagement',
+    items: [
+      { refType: 'Service',      labelKey: 'service' },
+      { refType: 'CustomerType', labelKey: 'customerType' },
+      { refType: 'CustomerGroup', labelKey: 'customerGroup' },
+    ],
+  },
+]
+
+const MASTER_DATA_REFS = MASTER_DATA_GROUPS.flatMap(g => g.items)
 
 const DB_ICON = (
   <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -98,60 +148,69 @@ function MasterDataSubNav({ collapsed }: { collapsed: boolean }) {
   const pathname = usePathname()
   const typeFromPath = MASTER_DATA_REFS.find(({ refType }) => pathname.includes(`/master-data/${refType}`))?.refType
   const typeParam = typeFromPath ?? searchParams.get('type') ?? 'LocationType'
-  const [expanded, setExpanded] = useState(true)
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
+    () => Object.fromEntries(MASTER_DATA_GROUPS.map(g => [g.groupKey, true]))
+  )
 
   return (
     <div className="flex flex-col gap-0.5 px-2">
-      {/* Inventory group header — clickable */}
-      <button
-        onClick={() => setExpanded(v => !v)}
-        className={clsx(
-          'flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-sm font-medium transition-colors',
-          collapsed ? 'justify-center px-2' : '',
-          'text-white/75 hover:bg-white/15 hover:text-white'
-        )}
-      >
-        <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582 4 8-4s8 1.79 8 4" />
-        </svg>
-        {!collapsed && (
-          <>
-            <span className="flex-1 text-left">{t.masterData.inventory}</span>
-            <svg
-              className={clsx('w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200', expanded ? 'rotate-0' : '-rotate-90')}
-              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+      {MASTER_DATA_GROUPS.map(group => {
+        const expanded = expandedGroups[group.groupKey]
+        return (
+          <div key={group.groupKey}>
+            {/* Group header — clickable */}
+            <button
+              onClick={() => setExpandedGroups(prev => ({ ...prev, [group.groupKey]: !prev[group.groupKey] }))}
+              className={clsx(
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-sm font-medium transition-colors',
+                collapsed ? 'justify-center px-2' : '',
+                'text-white/75 hover:bg-white/15 hover:text-white'
+              )}
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
-          </>
-        )}
-      </button>
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582 4 8-4s8 1.79 8 4" />
+              </svg>
+              {!collapsed && (
+                <>
+                  <span className="flex-1 text-left">{t.nav[group.groupKey]}</span>
+                  <svg
+                    className={clsx('w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200', expanded ? 'rotate-0' : '-rotate-90')}
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </>
+              )}
+            </button>
 
-      {/* Sub-items */}
-      {expanded && (
-        <div className={clsx(!collapsed && 'ml-3 pl-2 border-l border-white/10')}>
-          {MASTER_DATA_REFS.map(({ refType, labelKey }) => {
-            const isActive = typeParam === refType
-            return (
-              <Link
-                key={refType}
-                href={`/business/master-data?type=${refType}`}
-                title={collapsed ? t.masterData[labelKey] : undefined}
-                className={clsx(
-                  'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                  collapsed && 'justify-center px-2',
-                  isActive
-                    ? 'bg-white/20 text-white'
-                    : 'text-white/70 hover:bg-white/15 hover:text-white'
-                )}
-              >
-                {collapsed && DB_ICON}
-                {!collapsed && <span className="truncate">{t.masterData[labelKey]}</span>}
-              </Link>
-            )
-          })}
-        </div>
-      )}
+            {/* Sub-items */}
+            {expanded && (
+              <div className={clsx(!collapsed && 'ml-3 pl-2 border-l border-white/10')}>
+                {group.items.map(({ refType, labelKey }) => {
+                  const isActive = typeParam === refType
+                  return (
+                    <Link
+                      key={refType}
+                      href={`/business/master-data?type=${refType}`}
+                      title={collapsed ? t.masterData[labelKey] : undefined}
+                      className={clsx(
+                        'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                        collapsed && 'justify-center px-2',
+                        isActive
+                          ? 'bg-white/20 text-white'
+                          : 'text-white/70 hover:bg-white/15 hover:text-white'
+                      )}
+                    >
+                      {collapsed && DB_ICON}
+                      {!collapsed && <span className="truncate">{t.masterData[labelKey]}</span>}
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -163,8 +222,15 @@ export default function BusinessSidebar() {
 
   const isMasterData = pathname.startsWith('/business/master-data')
   const isInventory = pathname.startsWith('/business/inventory')
-  const sectionLabel = isInventory ? t.nav.inventory : isMasterData ? t.nav.masterData : t.nav.generalInfo
-  const items = isInventory ? INVENTORY_ITEMS : isMasterData ? [] : GENERAL_INFO_ITEMS
+  const isSaleManagement = pathname.startsWith('/business/sale-management')
+  const sectionLabel = isInventory
+    ? t.nav.inventory
+    : isMasterData
+    ? t.nav.masterData
+    : isSaleManagement
+    ? t.nav.saleManagement
+    : t.nav.generalInfo
+  const items = isInventory ? INVENTORY_ITEMS : isMasterData ? [] : isSaleManagement ? SALE_MANAGEMENT_ITEMS : GENERAL_INFO_ITEMS
 
   return (
     <aside

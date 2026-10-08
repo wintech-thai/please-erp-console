@@ -18,6 +18,14 @@ const REF_TYPE_GROUPS = [
       { refType: 'Project',      labelKey: 'project'      as const },
     ],
   },
+  {
+    groupKey: 'saleManagement' as const,
+    items: [
+      { refType: 'Service',      labelKey: 'service'      as const },
+      { refType: 'CustomerType', labelKey: 'customerType' as const },
+      { refType: 'CustomerGroup', labelKey: 'customerGroup' as const },
+    ],
+  },
 ]
 
 // ─── Delete modal ─────────────────────────────────────────────────────────────

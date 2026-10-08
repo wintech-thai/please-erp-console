@@ -72,6 +72,25 @@ export interface SaveInventoryDocStockInPayload {
   items?: InventoryDocItemRow[]
 }
 
+export interface SaveInventoryDocStockOutPayload {
+  description?: string
+  fromLocationId?: string
+  fromLocationCode?: string
+  fromLocationName?: string
+  items?: InventoryDocItemRow[]
+}
+
+export interface SaveInventoryDocTransferPayload {
+  description?: string
+  fromLocationId?: string
+  fromLocationCode?: string
+  fromLocationName?: string
+  toLocationId?: string
+  toLocationCode?: string
+  toLocationName?: string
+  items?: InventoryDocItemRow[]
+}
+
 export const inventoryDocApi = {
   getDocs: (payload: GetInventoryDocsPayload = {}) =>
     client.post<InventoryDocItem[]>(`${getBase()}/GetInventoryDocs`, payload),
@@ -93,4 +112,28 @@ export const inventoryDocApi = {
 
   cancelStockInById: (id: string) =>
     client.post<InventoryDocResponse>(`${getBase()}/CancelInventoryDocStockIn/${id}`),
+
+  addStockOut: (payload: SaveInventoryDocStockOutPayload) =>
+    client.post<InventoryDocResponse>(`${getBase()}/AddInventoryDocStockOut`, payload),
+
+  updateStockOutById: (id: string, payload: SaveInventoryDocStockOutPayload) =>
+    client.post<InventoryDocResponse>(`${getBase()}/UpdateInventoryDocStockOut/${id}`, payload),
+
+  approveStockOutById: (id: string) =>
+    client.post<InventoryDocResponse>(`${getBase()}/ApproveInventoryDocStockOut/${id}`),
+
+  cancelStockOutById: (id: string) =>
+    client.post<InventoryDocResponse>(`${getBase()}/CancelInventoryDocStockOut/${id}`),
+
+  addTransfer: (payload: SaveInventoryDocTransferPayload) =>
+    client.post<InventoryDocResponse>(`${getBase()}/AddInventoryDocTransfer`, payload),
+
+  updateTransferById: (id: string, payload: SaveInventoryDocTransferPayload) =>
+    client.post<InventoryDocResponse>(`${getBase()}/UpdateInventoryDocTransfer/${id}`, payload),
+
+  approveTransferById: (id: string) =>
+    client.post<InventoryDocResponse>(`${getBase()}/ApproveInventoryDocTransfer/${id}`),
+
+  cancelTransferById: (id: string) =>
+    client.post<InventoryDocResponse>(`${getBase()}/CancelInventoryDocTransfer/${id}`),
 }
