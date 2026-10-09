@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { AxiosError } from 'axios'
-import { ChevronLeft, Plus, Pencil, Trash2, CheckCircle2, XCircle, PackagePlus, MapPin, ListChecks, FileJson } from 'lucide-react'
+import { ChevronLeft, Plus, Pencil, Trash2, PackagePlus, MapPin, ListChecks, FileJson } from 'lucide-react'
 import clsx from 'clsx'
 import { useLang } from '@/context/LanguageContext'
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges'
@@ -138,42 +138,6 @@ function ItemModal({ initial, itemOptions, projectOptions, onSave, onClose }: {
   )
 }
 
-// ─── Approve/Cancel confirm modal ──────────────────────────────────────────────
-
-function ConfirmModal({ title, desc, confirmLabel, confirmingLabel, cancelLabel, confirming, danger, onConfirm, onCancel }: {
-  title: string; desc: string; confirmLabel: string; confirmingLabel: string; cancelLabel: string
-  confirming: boolean; danger?: boolean; onConfirm: () => void; onCancel: () => void
-}) {
-  return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onCancel}>
-      <div
-        className="w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden text-center px-8 py-8"
-        style={{ background: 'linear-gradient(135deg, rgb(var(--color-primary-800)) 0%, rgb(var(--color-primary-900)) 100%)' }}
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-5">
-          {danger ? <XCircle className="w-7 h-7 text-white" /> : <CheckCircle2 className="w-7 h-7 text-white" />}
-        </div>
-        <h3 className="text-lg font-bold text-white mb-2">{title}</h3>
-        <p className="text-sm text-white/60 mb-7">{desc}</p>
-        <div className="flex gap-3">
-          <button onClick={onCancel} className="flex-1 py-2.5 text-sm font-semibold text-white/80 bg-white/10 border border-white/20 rounded-xl hover:bg-white/20 transition-colors uppercase">
-            {cancelLabel}
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={confirming}
-            className={clsx('flex-1 py-2.5 text-sm font-semibold text-white rounded-xl disabled:opacity-60 transition-colors uppercase',
-              danger ? 'bg-red-600 hover:bg-red-700' : 'bg-primary-600 hover:bg-primary-700')}
-          >
-            {confirming ? confirmingLabel : confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ─── Main form ─────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -198,8 +162,6 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
   const [saving, setSaving] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
   const [itemModal, setItemModal] = useState<{ open: boolean; editing: LocalItem | null }>({ open: false, editing: null })
-  const [confirmAction, setConfirmAction] = useState<'approve' | 'cancel' | null>(null)
-  const [actioning, setActioning] = useState(false)
   const [jsonModalOpen, setJsonModalOpen] = useState(false)
 
   const { showConfirm, guardNavigation, confirmLeave, cancelLeave } = useUnsavedChanges(isDirty)
@@ -288,27 +250,6 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
       toast.error(axiosErr.message || (mode === 'add' ? si.failedToAdd : si.failedToUpdate))
     } finally {
       setSaving(false)
-    }
-  }
-
-  async function handleConfirmAction() {
-    if (!confirmAction || !inventoryDocId) return
-    setActioning(true)
-    try {
-      if (confirmAction === 'approve') {
-        await inventoryDocApi.approveStockInById(inventoryDocId)
-        toast.success(si.approveSuccess)
-      } else {
-        await inventoryDocApi.cancelStockInById(inventoryDocId)
-        toast.success(si.cancelDocSuccess)
-      }
-      setConfirmAction(null)
-      setIsDirty(false)
-      router.push(`/business/inventory/stock-in?highlight=${inventoryDocId}`)
-    } catch {
-      toast.error(confirmAction === 'approve' ? si.failedToApprove : si.failedToCancelDoc)
-    } finally {
-      setActioning(false)
     }
   }
 
@@ -475,16 +416,6 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
         </div>
 
         <div className="flex-none -mx-3 sm:-mx-6 px-4 sm:px-8 py-4 flex items-center justify-end gap-3 bg-white border-t border-gray-100 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
-          {mode === 'edit' && isPending && (
-            <>
-              <button type="button" onClick={() => setConfirmAction('cancel')} className="px-5 py-2.5 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors">
-                {si.cancelDocBtn}
-              </button>
-              <button type="button" onClick={() => setConfirmAction('approve')} className="px-5 py-2.5 text-sm font-medium text-primary-700 border border-primary-200 rounded-lg hover:bg-primary-50 transition-colors">
-                {si.approveBtn}
-              </button>
-            </>
-          )}
           <button type="button" onClick={() => guardNavigation(() => router.back())} className={cancelBtnCls}>
             {si.cancel}
           </button>
@@ -503,20 +434,6 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
           projectOptions={projectOptions}
           onSave={handleItemModalSave}
           onClose={() => setItemModal({ open: false, editing: null })}
-        />
-      )}
-
-      {confirmAction && (
-        <ConfirmModal
-          title={confirmAction === 'approve' ? si.approveConfirmTitle : si.cancelDocConfirmTitle}
-          desc={confirmAction === 'approve' ? si.approveConfirmDesc : si.cancelDocConfirmDesc}
-          confirmLabel={confirmAction === 'approve' ? si.approveBtn : si.confirm}
-          confirmingLabel={confirmAction === 'approve' ? si.approving : si.cancelling}
-          cancelLabel={si.cancel}
-          confirming={actioning}
-          danger={confirmAction === 'cancel'}
-          onConfirm={handleConfirmAction}
-          onCancel={() => setConfirmAction(null)}
         />
       )}
 
