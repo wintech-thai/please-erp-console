@@ -9,10 +9,14 @@ import { masterRefApi } from '@/lib/api/master-ref.api'
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges'
 import LeaveConfirmModal from '@/components/LeaveConfirmModal'
 
-const REF_TYPE_LABEL_MAP: Record<string, 'locationType' | 'itemType' | 'itemUnit'> = {
+const REF_TYPE_LABEL_MAP: Record<string, 'locationType' | 'itemType' | 'itemUnit' | 'project' | 'service' | 'customerType' | 'customerGroup'> = {
   LocationType: 'locationType',
   ItemType: 'itemType',
   ItemUnit: 'itemUnit',
+  Project: 'project',
+  Service: 'service',
+  CustomerType: 'customerType',
+  CustomerGroup: 'customerGroup',
 }
 
 export default function AddMasterDataPage() {

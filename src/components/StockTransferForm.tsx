@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { AxiosError } from 'axios'
-import { ChevronLeft, Plus, Pencil, Trash2, PackagePlus, MapPin, ListChecks, FileJson } from 'lucide-react'
+import { ChevronLeft, Plus, Pencil, Trash2, ArrowLeftRight, MapPin, ListChecks, FileJson } from 'lucide-react'
 import clsx from 'clsx'
 import { useLang } from '@/context/LanguageContext'
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges'
@@ -46,15 +46,12 @@ function ItemModal({ initial, itemOptions, projectOptions, onSave, onClose }: {
   onClose: () => void
 }) {
   const { t } = useLang()
-  const si = t.stockIn
+  const st = t.stockTransfer
 
   const [itemId, setItemId] = useState(initial?.itemId || '')
   const [quantity, setQuantity] = useState(initial?.itemQuantity?.toString() || '')
-  const [unitPrice, setUnitPrice] = useState(initial?.itemUnitPrice?.toString() || '')
   const [lotId, setLotId] = useState(initial?.lotId || '')
   const [project, setProject] = useState(initial?.project || '')
-
-  const total = (parseFloat(quantity) || 0) * (parseFloat(unitPrice) || 0)
 
   const itemSelectOptions = useMemo(
     () => itemOptions.map(i => ({ code: i.id, label: i.code, sublabel: i.nameTh })),
@@ -65,15 +62,9 @@ function ItemModal({ initial, itemOptions, projectOptions, onSave, onClose }: {
     [projectOptions]
   )
 
-  function handleItemSelect(id: string) {
-    setItemId(id)
-    const picked = itemOptions.find(i => i.id === id)
-    if (picked && !unitPrice && picked.price != null) setUnitPrice(String(picked.price))
-  }
-
   function handleSave() {
     const qty = parseFloat(quantity)
-    if (!itemId || !qty || qty <= 0) { toast.error(si.itemRequiredFields); return }
+    if (!itemId || !qty || qty <= 0) { toast.error(st.itemRequiredFields); return }
     const picked = itemOptions.find(i => i.id === itemId)
     onSave({
       localKey: initial?.localKey || newLocalKey(),
@@ -82,8 +73,8 @@ function ItemModal({ initial, itemOptions, projectOptions, onSave, onClose }: {
       itemCode: picked?.code,
       itemName: picked?.nameTh,
       itemQuantity: qty,
-      itemUnitPrice: parseFloat(unitPrice) || 0,
-      itemAmount: total,
+      itemUnitPrice: initial?.itemUnitPrice ?? undefined,
+      itemAmount: initial?.itemAmount ?? undefined,
       lotId: lotId || undefined,
       project: project || undefined,
     })
@@ -93,50 +84,51 @@ function ItemModal({ initial, itemOptions, projectOptions, onSave, onClose }: {
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div className="w-full max-w-lg rounded-2xl shadow-2xl bg-white overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="px-6 py-4 border-b border-gray-100">
-          <h3 className="text-base font-bold text-gray-900">{initial ? si.itemModalTitleEdit : si.itemModalTitleAdd}</h3>
+          <h3 className="text-base font-bold text-gray-900">{initial ? st.itemModalTitleEdit : st.itemModalTitleAdd}</h3>
         </div>
         <div className="px-6 py-5 space-y-4">
-          <FormField label={si.itemFieldItem} required>
+          <FormField label={st.itemFieldItem} required>
             <SearchableSelect
               options={itemSelectOptions}
               value={itemId}
-              onChange={handleItemSelect}
-              placeholder={si.itemFieldItemPlaceholder}
+              onChange={setItemId}
+              placeholder={st.itemFieldItemPlaceholder}
             />
           </FormField>
           <div className="grid grid-cols-2 gap-4">
-            <FormField label={si.itemFieldQuantity} required>
+            <FormField label={st.itemFieldQuantity} required>
               <input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} className={inputCls} min={0} step="any" />
             </FormField>
-            <FormField label={si.itemFieldUnitPrice}>
-              <input type="number" value={unitPrice} onChange={e => setUnitPrice(e.target.value)} className={inputCls} min={0} step="any" />
+            <FormField label={st.itemFieldUnitPrice}>
+              <input type="text" value={st.priceCalcNotice} readOnly className={clsx(inputCls, 'bg-gray-50 text-gray-400 italic')} />
             </FormField>
           </div>
-          <FormField label={si.itemFieldTotalAmount}>
-            <input type="text" value={fmtNumber(total)} readOnly className={clsx(inputCls, 'bg-gray-50 text-gray-500')} />
+          <FormField label={st.itemFieldTotalAmount}>
+            <input type="text" value={st.priceCalcNotice} readOnly className={clsx(inputCls, 'bg-gray-50 text-gray-400 italic')} />
           </FormField>
           <div className="grid grid-cols-2 gap-4">
-            <FormField label={si.itemFieldLot}>
+            <FormField label={st.itemFieldLot}>
               <input type="text" value={lotId} onChange={e => setLotId(e.target.value)} className={inputCls} />
             </FormField>
-            <FormField label={si.itemFieldProject}>
+            <FormField label={st.itemFieldProject}>
               <SearchableSelect
                 options={projectSelectOptions}
                 value={project}
                 onChange={setProject}
-                placeholder={si.itemFieldProjectPlaceholder}
+                placeholder={st.itemFieldProjectPlaceholder}
               />
             </FormField>
           </div>
         </div>
         <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3">
-          <button onClick={onClose} className={cancelBtnCls}>{si.itemModalCancel}</button>
-          <button onClick={handleSave} className={primaryBtnCls}>{si.itemModalOk}</button>
+          <button onClick={onClose} className={cancelBtnCls}>{st.itemModalCancel}</button>
+          <button onClick={handleSave} className={primaryBtnCls}>{st.itemModalOk}</button>
         </div>
       </div>
     </div>
   )
 }
+
 
 // ─── Main form ─────────────────────────────────────────────────────────────────
 
@@ -145,9 +137,9 @@ interface Props {
   inventoryDocId?: string
 }
 
-export default function StockInForm({ mode, inventoryDocId }: Props) {
+export default function StockTransferForm({ mode, inventoryDocId }: Props) {
   const { t } = useLang()
-  const si = t.stockIn
+  const st = t.stockTransfer
   const router = useRouter()
 
   const { options: projectOptions } = useMasterRefOptions('Project')
@@ -157,6 +149,7 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
   const [loading, setLoading] = useState(mode === 'edit')
   const [doc, setDoc] = useState<InventoryDocItem | null>(null)
   const [description, setDescription] = useState('')
+  const [fromLocationId, setFromLocationId] = useState('')
   const [toLocationId, setToLocationId] = useState('')
   const [items, setItems] = useState<LocalItem[]>([])
   const [saving, setSaving] = useState(false)
@@ -187,10 +180,11 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
         const d = res.data
         setDoc(d)
         setDescription(d.description || '')
+        setFromLocationId(d.fromLocationId || '')
         setToLocationId(d.toLocationId || '')
         setItems((d.items || []).map(it => ({ ...it, localKey: newLocalKey() })))
       })
-      .catch(() => toast.error(si.loadDocFailed))
+      .catch(() => toast.error(st.loadDocFailed))
       .finally(() => setLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, inventoryDocId])
@@ -219,39 +213,47 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const location = locations.find(l => l.id === toLocationId)
-    if (!toLocationId) { toast.error(si.requiredFields); return }
+    if (!fromLocationId || !toLocationId) { toast.error(st.requiredFields); return }
+    if (fromLocationId === toLocationId) { toast.error(st.sameLocationError); return }
+
+    const fromLocation = locations.find(l => l.id === fromLocationId)
+    const toLocation = locations.find(l => l.id === toLocationId)
 
     const payload = {
       description: description || undefined,
+      fromLocationId,
+      fromLocationCode: fromLocation?.code,
+      fromLocationName: fromLocation?.name,
       toLocationId,
-      toLocationCode: location?.code,
-      toLocationName: location?.name,
-      items: items.map(({ localKey, ...rest }) => rest),
+      toLocationCode: toLocation?.code,
+      toLocationName: toLocation?.name,
+      items: items.map(({ localKey, itemUnitPrice, itemAmount, ...rest }) => rest),
     }
 
     setSaving(true)
     try {
       if (mode === 'add') {
-        const res = await inventoryDocApi.addStockIn(payload)
-        toast.success(si.addSuccess)
+        const res = await inventoryDocApi.addTransfer(payload)
+        if (res.data.status !== 'OK') { toast.error(res.data.description || st.failedToAdd); return }
+        toast.success(st.addSuccess)
         setIsDirty(false)
         const newId = res.data.inventoryDoc?.id
-        router.push(newId ? `/business/inventory/stock-in?highlight=${newId}` : '/business/inventory/stock-in')
+        router.push(newId ? `/business/inventory/stock-transfer?highlight=${newId}` : '/business/inventory/stock-transfer')
       } else if (inventoryDocId) {
-        const res = await inventoryDocApi.updateStockInById(inventoryDocId, payload)
-        if (res.data.status !== 'OK') { toast.error(res.data.description || si.failedToUpdate); return }
-        toast.success(si.updateSuccess)
+        const res = await inventoryDocApi.updateTransferById(inventoryDocId, payload)
+        if (res.data.status !== 'OK') { toast.error(res.data.description || st.failedToUpdate); return }
+        toast.success(st.updateSuccess)
         setIsDirty(false)
-        router.push(`/business/inventory/stock-in?highlight=${inventoryDocId}`)
+        router.push(`/business/inventory/stock-transfer?highlight=${inventoryDocId}`)
       }
     } catch (err) {
       const axiosErr = err as AxiosError
-      toast.error(axiosErr.message || (mode === 'add' ? si.failedToAdd : si.failedToUpdate))
+      toast.error(axiosErr.message || (mode === 'add' ? st.failedToAdd : st.failedToUpdate))
     } finally {
       setSaving(false)
     }
   }
+
 
   if (loading) {
     return (
@@ -261,9 +263,9 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
     )
   }
 
-  const statusLabel = doc?.documentStatus === 'Approved' ? si.statusApproved
-    : doc?.documentStatus === 'Cancelled' ? si.statusCancelled
-    : si.statusPending
+  const statusLabel = doc?.documentStatus === 'Approved' ? st.statusApproved
+    : doc?.documentStatus === 'Cancelled' ? st.statusCancelled
+    : st.statusPending
 
   return (
     <div className="flex flex-col overflow-hidden h-[calc(100dvh-5rem)] sm:h-[calc(100dvh-6.5rem)]">
@@ -272,11 +274,11 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
           <ChevronLeft className="w-5 h-5" />
         </button>
         <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center flex-none">
-          <PackagePlus className="w-5 h-5 text-white" />
+          <ArrowLeftRight className="w-5 h-5 text-white" />
         </div>
         <div className="flex-1 min-w-0">
           <h1 className="text-lg font-bold truncate">
-            {mode === 'add' ? si.createTitle : si.editTitle}
+            {mode === 'add' ? st.createTitle : st.editTitle}
           </h1>
           {doc?.documentNo && <p className="text-xs text-primary-100 mt-0.5">{doc.documentNo}</p>}
         </div>
@@ -295,7 +297,7 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
 
       {readOnly && (
         <div className="flex-none mb-4 px-4 py-3 rounded-lg bg-amber-50 text-amber-700 text-sm border border-amber-100">
-          {si.readOnlyNotice}
+          {st.readOnlyNotice}
         </div>
       )}
 
@@ -306,19 +308,33 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
               <div className="w-7 h-7 rounded-lg bg-primary-50 flex items-center justify-center flex-none">
                 <MapPin className="w-3.5 h-3.5 text-primary-600" />
               </div>
-              <h3 className="text-sm font-bold text-gray-900">{si.docInfoTitle}</h3>
+              <h3 className="text-sm font-bold text-gray-900">{st.docInfoTitle}</h3>
             </div>
             <div className="max-w-2xl space-y-4">
-              <FormField label={si.fieldToLocation} required>
-                <SearchableSelect
-                  options={locationSelectOptions}
-                  value={toLocationId}
-                  onChange={v => { setToLocationId(v); markDirty() }}
-                  placeholder={si.fieldToLocationPlaceholder}
-                  disabled={readOnly}
-                />
-              </FormField>
-              <FormField label={si.fieldDescription}>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField label={st.fieldFromLocation} required>
+                  <SearchableSelect
+                    options={locationSelectOptions}
+                    value={fromLocationId}
+                    onChange={v => { setFromLocationId(v); markDirty() }}
+                    placeholder={st.fieldFromLocationPlaceholder}
+                    disabled={readOnly}
+                  />
+                </FormField>
+                <FormField label={st.fieldToLocation} required>
+                  <SearchableSelect
+                    options={locationSelectOptions}
+                    value={toLocationId}
+                    onChange={v => { setToLocationId(v); markDirty() }}
+                    placeholder={st.fieldToLocationPlaceholder}
+                    disabled={readOnly}
+                  />
+                </FormField>
+              </div>
+              {!readOnly && fromLocationId && toLocationId && fromLocationId === toLocationId && (
+                <p className="text-xs text-red-600">{st.sameLocationError}</p>
+              )}
+              <FormField label={st.fieldDescription}>
                 <textarea
                   value={description}
                   onChange={e => { setDescription(e.target.value); markDirty() }}
@@ -337,12 +353,12 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
                 <div className="w-7 h-7 rounded-lg bg-primary-50 flex items-center justify-center flex-none">
                   <ListChecks className="w-3.5 h-3.5 text-primary-600" />
                 </div>
-                <h3 className="text-sm font-bold text-gray-900">{si.itemsTitle}</h3>
+                <h3 className="text-sm font-bold text-gray-900">{st.itemsTitle}</h3>
               </div>
               {!readOnly && (
                 <button type="button" onClick={handleAddItem} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">
                   <Plus className="w-3.5 h-3.5" />
-                  {si.addItemBtn}
+                  {st.addItemBtn}
                 </button>
               )}
             </div>
@@ -350,19 +366,19 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50/70 border-b border-gray-100">
-                    <th className="px-5 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{si.colItem}</th>
-                    <th className="px-5 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{si.colItemName}</th>
-                    <th className="px-5 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{si.colQuantity}</th>
-                    <th className="px-5 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{si.colUnitPrice}</th>
-                    <th className="px-5 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{si.colTotalAmount}</th>
-                    <th className="px-5 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{si.colLot}</th>
-                    <th className="px-5 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{si.colProject}</th>
+                    <th className="px-5 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{st.colItem}</th>
+                    <th className="px-5 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{st.colItemName}</th>
+                    <th className="px-5 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{st.colQuantity}</th>
+                    <th className="px-5 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{st.colUnitPrice}</th>
+                    <th className="px-5 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{st.colTotalAmount}</th>
+                    <th className="px-5 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{st.colLot}</th>
+                    <th className="px-5 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{st.colProject}</th>
                     {!readOnly && <th className="w-20 px-5 py-2.5" />}
                   </tr>
                 </thead>
                 <tbody>
                   {items.length === 0 ? (
-                    <tr><td colSpan={readOnly ? 7 : 8} className="py-10 text-center text-sm text-gray-400">{si.noItems}</td></tr>
+                    <tr><td colSpan={readOnly ? 7 : 8} className="py-10 text-center text-sm text-gray-400">{st.noItems}</td></tr>
                   ) : items.map((item, idx) => {
                     const highlighted = highlightedKey === item.localKey
                     return (
@@ -379,8 +395,12 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
                       <td className="px-5 py-3 font-medium text-gray-800">{item.itemCode || '—'}</td>
                       <td className="px-5 py-3 text-gray-600">{item.itemName || '—'}</td>
                       <td className="px-5 py-3 text-right tabular-nums text-gray-800">{fmtNumber(item.itemQuantity)}</td>
-                      <td className="px-5 py-3 text-right tabular-nums text-gray-600">{fmtNumber(item.itemUnitPrice)}</td>
-                      <td className="px-5 py-3 text-right tabular-nums font-semibold text-gray-900">{fmtNumber(item.itemAmount)}</td>
+                      <td className="px-5 py-3 text-right tabular-nums text-gray-400 italic">
+                        {item.itemUnitPrice != null ? fmtNumber(item.itemUnitPrice) : st.priceCalcNotice}
+                      </td>
+                      <td className="px-5 py-3 text-right tabular-nums font-semibold text-gray-400 italic">
+                        {item.itemAmount != null ? fmtNumber(item.itemAmount) : st.priceCalcNotice}
+                      </td>
                       <td className="px-5 py-3 text-gray-500">{item.lotId || '—'}</td>
                       <td className="px-5 py-3 text-gray-500">
                         {projectOptions.find(p => p.code === item.project)?.description || item.project || '—'}
@@ -404,7 +424,7 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
                 {items.length > 0 && (
                   <tfoot>
                     <tr className="border-t-2 border-primary-100 bg-primary-50/60">
-                      <td colSpan={4} className="px-5 py-3 text-xs font-bold text-primary-700 uppercase tracking-wide text-right">{si.colTotalAmount}</td>
+                      <td colSpan={4} className="px-5 py-3 text-xs font-bold text-primary-700 uppercase tracking-wide text-right">{st.colTotalAmount}</td>
                       <td className="px-5 py-3 text-right tabular-nums font-bold text-primary-800">{fmtNumber(totalAmount)}</td>
                       <td colSpan={readOnly ? 2 : 3} />
                     </tr>
@@ -417,11 +437,11 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
 
         <div className="flex-none -mx-3 sm:-mx-6 px-4 sm:px-8 py-4 flex items-center justify-end gap-3 bg-white border-t border-gray-100 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
           <button type="button" onClick={() => guardNavigation(() => router.back())} className={cancelBtnCls}>
-            {si.cancel}
+            {st.cancel}
           </button>
           {!readOnly && (
             <button type="submit" disabled={saving} className={primaryBtnCls}>
-              {saving ? si.saving : si.save}
+              {saving ? st.saving : st.save}
             </button>
           )}
         </div>
