@@ -216,6 +216,11 @@ export default function StockTransferForm({ mode, inventoryDocId }: Props) {
     if (!fromLocationId || !toLocationId) { toast.error(st.requiredFields); return }
     if (fromLocationId === toLocationId) { toast.error(st.sameLocationError); return }
 
+    if (mode === 'edit' && inventoryDocId && !isDirty) {
+      router.push(`/business/inventory/stock-transfer?highlight=${inventoryDocId}`)
+      return
+    }
+
     const fromLocation = locations.find(l => l.id === fromLocationId)
     const toLocation = locations.find(l => l.id === toLocationId)
 

@@ -1,5 +1,5 @@
-import ComingSoonPage from '@/components/ComingSoonPage'
+import SalesDocList from '@/components/SalesDocList'
 
 export default function CashSalePage() {
-  return <ComingSoonPage titleEn="Cash Sale" titleTh="ขายสด" />
+  return <SalesDocList saleType="cash" />
 }

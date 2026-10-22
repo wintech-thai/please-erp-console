@@ -80,7 +80,6 @@ const SALE_MANAGEMENT_ITEMS = [
   {
     href: '/business/sale-management/customer-data',
     labelKey: 'customerData' as const,
-    comingSoon: true,
     icon: (
       <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -91,7 +90,6 @@ const SALE_MANAGEMENT_ITEMS = [
     href: '/business/sale-management/credit-sale',
     labelKey: 'creditSale' as const,
     dividerBefore: true,
-    comingSoon: true,
     icon: (
       <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 14l6-6m-5-1h.01M15 15h.01M3 6h18M3 6v12a2 2 0 002 2h14a2 2 0 002-2V6M3 6l2-3h14l2 3" />
@@ -101,7 +99,6 @@ const SALE_MANAGEMENT_ITEMS = [
   {
     href: '/business/sale-management/cash-sale',
     labelKey: 'cashSale' as const,
-    comingSoon: true,
     icon: (
       <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V6m0 2v8m0 0v2m0-2c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -110,7 +107,7 @@ const SALE_MANAGEMENT_ITEMS = [
   },
 ]
 
-type MasterDataRefLabelKey = 'locationType' | 'itemType' | 'itemUnit' | 'project' | 'service' | 'customerType' | 'customerGroup'
+type MasterDataRefLabelKey = 'locationType' | 'itemType' | 'itemUnit' | 'project' | 'service' | 'customerType' | 'customerGroup' | 'addressType'
 type MasterDataRefItem = { refType: string; labelKey: MasterDataRefLabelKey }
 
 const MASTER_DATA_GROUPS: { groupKey: 'inventory' | 'saleManagement'; items: MasterDataRefItem[] }[] = [
@@ -129,6 +126,7 @@ const MASTER_DATA_GROUPS: { groupKey: 'inventory' | 'saleManagement'; items: Mas
       { refType: 'Service',      labelKey: 'service' },
       { refType: 'CustomerType', labelKey: 'customerType' },
       { refType: 'CustomerGroup', labelKey: 'customerGroup' },
+      { refType: 'AddressType', labelKey: 'addressType' },
     ],
   },
 ]

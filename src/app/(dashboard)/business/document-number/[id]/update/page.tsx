@@ -67,6 +67,12 @@ export default function UpdateDocumentNumberPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!format) { toast.error(dn.requiredFields); return }
+
+    if (!isDirty) {
+      router.push(`${LIST_PATH}?highlight=${itemId}`)
+      return
+    }
+
     setSaving(true)
     try {
       const pendingTag = tagInput.trim()

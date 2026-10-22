@@ -24,6 +24,7 @@ const REF_TYPE_GROUPS = [
       { refType: 'Service',      labelKey: 'service'      as const },
       { refType: 'CustomerType', labelKey: 'customerType' as const },
       { refType: 'CustomerGroup', labelKey: 'customerGroup' as const },
+      { refType: 'AddressType', labelKey: 'addressType' as const },
     ],
   },
 ]

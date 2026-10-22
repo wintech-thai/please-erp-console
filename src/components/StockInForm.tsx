@@ -222,6 +222,11 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
     const location = locations.find(l => l.id === toLocationId)
     if (!toLocationId) { toast.error(si.requiredFields); return }
 
+    if (mode === 'edit' && inventoryDocId && !isDirty) {
+      router.push(`/business/inventory/stock-in?highlight=${inventoryDocId}`)
+      return
+    }
+
     const payload = {
       description: description || undefined,
       toLocationId,

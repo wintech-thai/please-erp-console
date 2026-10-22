@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { masterRefApi } from '@/lib/api/master-ref.api'
 
 export interface MasterRefOption {
+  id: string
   code: string
   description: string
 }
@@ -19,7 +20,7 @@ export function useMasterRefOptions(refType: string) {
       .then(res => {
         if (cancelled) return
         const list = Array.isArray(res.data) ? res.data : []
-        setOptions(list.map(r => ({ code: r.code, description: r.description })))
+        setOptions(list.map(r => ({ id: r.id, code: r.code, description: r.description })))
       })
       .catch(() => { if (!cancelled) setOptions([]) })
       .finally(() => { if (!cancelled) setLoading(false) })

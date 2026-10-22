@@ -73,6 +73,12 @@ export default function UpdateMasterDataPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!isDirty) {
+      router.push(`${listPath}&highlight=${itemId}`)
+      return
+    }
+
     setSaving(true)
     try {
       await masterRefApi.updateRefById(itemId, { description, tags: tags.join(',') })
