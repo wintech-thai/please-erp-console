@@ -6,6 +6,7 @@ function getBase() {
 }
 
 export type ProductType = 'Service' | 'InventoryItem' | 'Custom'
+export type ItemDiscountType = 'Percent' | 'Amount'
 
 export interface AccountDocItemRow {
   id?: string | null
@@ -18,6 +19,15 @@ export interface AccountDocItemRow {
   unitPrice?: number | null
   totalPrice?: number | null
   tags?: string | null
+  itemDiscountType?: ItemDiscountType | string | null
+  itemDiscountValue?: number | null
+  itemDiscountAmount?: number | null
+  netAmount?: number | null
+  vatEnabled?: boolean | null
+  vatAmount?: number | null
+  withholdingTaxEnabled?: boolean | null
+  withholdingTaxRate?: number | null
+  withholdingTaxAmount?: number | null
 }
 
 export interface AccountDocItem {
@@ -32,6 +42,13 @@ export interface AccountDocItem {
   documentDate?: string | null
   dueDate?: string | null
   totalPrice?: number | null
+  discountAmount?: number | null
+  netAmount?: number | null
+  vatRate?: number | null
+  vatAmount?: number | null
+  totalWithVat?: number | null
+  withholdingTaxAmount?: number | null
+  grandTotal?: number | null
   paymentMethod?: string | null
   paidAmount?: number | null
   status: string
@@ -64,6 +81,7 @@ export interface SaveAccountDocPayload {
   dueDate?: string
   paymentMethod?: string
   paidAmount?: number
+  vatRate?: number
   items?: AccountDocItemRow[]
 }
 

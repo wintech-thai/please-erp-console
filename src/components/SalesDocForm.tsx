@@ -4,14 +4,15 @@ import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { AxiosError } from 'axios'
-import { ChevronLeft, Plus, Pencil, Trash2, Receipt, ListChecks, Users } from 'lucide-react'
+import { ChevronLeft, Plus, Pencil, Trash2, Receipt, ListChecks, Users, FileJson } from 'lucide-react'
 import clsx from 'clsx'
 import { useLang } from '@/context/LanguageContext'
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges'
 import { useMasterRefOptions } from '@/hooks/useMasterRefOptions'
 import LeaveConfirmModal from '@/components/LeaveConfirmModal'
+import JsonViewerModal from '@/components/JsonViewerModal'
 import SearchableSelect from '@/components/SearchableSelect'
-import { accountDocApi, type AccountDocItemRow, type AccountDocItem, type ProductType } from '@/lib/api/account-doc.api'
+import { accountDocApi, type AccountDocItemRow, type AccountDocItem, type ProductType, type ItemDiscountType } from '@/lib/api/account-doc.api'
 import { customerApi, type CustomerItem } from '@/lib/api/customer.api'
 import { inventoryItemApi, type InventoryItemItem } from '@/lib/api/inventory-item.api'
 
@@ -25,6 +26,21 @@ function newLocalKey() {
 function fmtNumber(n?: number | null) {
   if (n == null) return '—'
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+// Mirrors AccountDocRepository.CalculateItemAmounts (onix-v2-api) so the UI preview matches
+// what gets persisted on save — server recalculates authoritatively either way.
+function calcItemAmounts(item: Pick<LocalItem, 'quantity' | 'unitPrice' | 'itemDiscountType' | 'itemDiscountValue' | 'vatEnabled' | 'withholdingTaxEnabled' | 'withholdingTaxRate'>, vatRate: number) {
+  const gross = (item.quantity || 0) * (item.unitPrice || 0)
+  const discountAmount = item.itemDiscountType === 'Percent'
+    ? gross * ((item.itemDiscountValue || 0) / 100)
+    : item.itemDiscountType === 'Amount'
+      ? (item.itemDiscountValue || 0)
+      : 0
+  const netAmount = gross - discountAmount
+  const vatAmount = item.vatEnabled ? netAmount * (vatRate / 100) : 0
+  const withholdingTaxAmount = item.withholdingTaxEnabled ? netAmount * ((item.withholdingTaxRate || 0) / 100) : 0
+  return { gross, discountAmount, netAmount, vatAmount, withholdingTaxAmount }
 }
 
 function toDateInputValue(iso?: string | null) {
@@ -43,10 +59,11 @@ function DocStatusBadge({ status, label }: { status?: string | null; label: stri
 
 // ─── Item modal ────────────────────────────────────────────────────────────────
 
-function ItemModal({ initial, serviceOptions, itemOptions, onSave, onClose }: {
+function ItemModal({ initial, serviceOptions, itemOptions, vatRate, onSave, onClose }: {
   initial: LocalItem | null
   serviceOptions: { id: string; code: string; description: string }[]
   itemOptions: InventoryItemItem[]
+  vatRate: number
   onSave: (item: LocalItem) => void
   onClose: () => void
 }) {
@@ -58,8 +75,22 @@ function ItemModal({ initial, serviceOptions, itemOptions, onSave, onClose }: {
   const [customName, setCustomName] = useState(productType === 'Custom' ? (initial?.productDesc || '') : '')
   const [quantity, setQuantity] = useState(initial?.quantity?.toString() || '1')
   const [unitPrice, setUnitPrice] = useState(initial?.unitPrice?.toString() || '')
+  const [discountType, setDiscountType] = useState<ItemDiscountType | ''>((initial?.itemDiscountType as ItemDiscountType) || '')
+  const [discountValue, setDiscountValue] = useState(initial?.itemDiscountValue?.toString() || '')
+  const [vatEnabled, setVatEnabled] = useState(!!initial?.vatEnabled)
+  const [whtEnabled, setWhtEnabled] = useState(!!initial?.withholdingTaxEnabled)
+  const [whtRate, setWhtRate] = useState(initial?.withholdingTaxRate?.toString() || '3')
 
   const total = (parseFloat(quantity) || 0) * (parseFloat(unitPrice) || 0)
+  const calc = calcItemAmounts({
+    quantity: parseFloat(quantity) || 0,
+    unitPrice: parseFloat(unitPrice) || 0,
+    itemDiscountType: discountType || null,
+    itemDiscountValue: parseFloat(discountValue) || 0,
+    vatEnabled,
+    withholdingTaxEnabled: whtEnabled,
+    withholdingTaxRate: parseFloat(whtRate) || 0,
+  }, vatRate)
 
   const serviceSelectOptions = useMemo(
     () => serviceOptions.map(s => ({ code: s.id, label: s.description || s.code, sublabel: s.code })),
@@ -110,6 +141,15 @@ function ItemModal({ initial, serviceOptions, itemOptions, onSave, onClose }: {
       quantity: qty,
       unitPrice: parseFloat(unitPrice) || 0,
       totalPrice: total,
+      itemDiscountType: discountType || null,
+      itemDiscountValue: parseFloat(discountValue) || 0,
+      itemDiscountAmount: calc.discountAmount,
+      netAmount: calc.netAmount,
+      vatEnabled: productType === 'Service' ? vatEnabled : false,
+      vatAmount: productType === 'Service' ? calc.vatAmount : 0,
+      withholdingTaxEnabled: productType === 'Service' ? whtEnabled : false,
+      withholdingTaxRate: productType === 'Service' ? (parseFloat(whtRate) || 0) : null,
+      withholdingTaxAmount: productType === 'Service' ? calc.withholdingTaxAmount : 0,
     })
   }
 
@@ -155,6 +195,51 @@ function ItemModal({ initial, serviceOptions, itemOptions, onSave, onClose }: {
           <FormField label={sd.fieldTotalAmount}>
             <input type="text" value={fmtNumber(total)} readOnly className={clsx(inputCls, 'bg-gray-50 text-gray-500')} />
           </FormField>
+
+          {/* ปรับแก้ #6: ส่วนลดระดับ item เลือกได้ % หรือจำนวนเงิน */}
+          <FormField label={sd.fieldItemDiscount}>
+            <div className="flex gap-2">
+              <select value={discountType} onChange={e => setDiscountType(e.target.value as ItemDiscountType | '')} className={clsx(inputCls, 'w-32 flex-none')}>
+                <option value="">{sd.discountTypeNone}</option>
+                <option value="Percent">%</option>
+                <option value="Amount">{sd.discountTypeAmount}</option>
+              </select>
+              <input
+                type="number" value={discountValue} onChange={e => setDiscountValue(e.target.value)}
+                disabled={!discountType} className={clsx(inputCls, !discountType && 'bg-gray-50 text-gray-400')}
+                min={0} step="any"
+              />
+            </div>
+            {discountType && <p className="mt-1 text-xs text-gray-400">{sd.discountAmountLabel}: {fmtNumber(calc.discountAmount)}</p>}
+          </FormField>
+
+          {/* ปรับแก้ #7: VAT / หัก ณ ที่จ่าย เฉพาะ item ประเภทสินค้าและบริการทั่วไป */}
+          {productType === 'Service' && (
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 pt-1">
+              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <input type="checkbox" checked={vatEnabled} onChange={e => setVatEnabled(e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+                {sd.fieldVatEnabled}
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <input type="checkbox" checked={whtEnabled} onChange={e => setWhtEnabled(e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+                {sd.fieldWithholdingTaxEnabled}
+              </label>
+              {whtEnabled && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">%</span>
+                  <input type="number" value={whtRate} onChange={e => setWhtRate(e.target.value)} className={clsx(inputCls, 'w-20 py-1.5')} min={0} step="any" />
+                </div>
+              )}
+            </div>
+          )}
+
+          {(discountType || vatEnabled || whtEnabled) && (
+            <div className="rounded-lg bg-gray-50 border border-gray-100 px-4 py-3 text-xs text-gray-600 space-y-1">
+              <div className="flex justify-between"><span>{sd.netAmountLabel}</span><span className="font-semibold text-gray-800">{fmtNumber(calc.netAmount)}</span></div>
+              {vatEnabled && <div className="flex justify-between"><span>{sd.vatAmountLabel}</span><span className="font-semibold text-gray-800">{fmtNumber(calc.vatAmount)}</span></div>}
+              {whtEnabled && <div className="flex justify-between"><span>{sd.withholdingAmountLabel}</span><span className="font-semibold text-gray-800">{fmtNumber(calc.withholdingTaxAmount)}</span></div>}
+            </div>
+          )}
         </div>
         <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3">
           <button onClick={onClose} className={cancelBtnCls}>{sd.itemModalCancel}</button>
@@ -192,11 +277,13 @@ export default function SalesDocForm({ mode, saleType, accountDocId }: Props) {
   const [dueDate, setDueDate] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('Cash')
   const [paidAmount, setPaidAmount] = useState('')
+  const [vatRate, setVatRate] = useState('0')
   const [items, setItems] = useState<LocalItem[]>([])
   const [saving, setSaving] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
   const [itemModal, setItemModal] = useState<{ open: boolean; editing: LocalItem | null }>({ open: false, editing: null })
   const [highlightedKey, setHighlightedKey] = useState<string | null>(null)
+  const [jsonModalOpen, setJsonModalOpen] = useState(false)
 
   const { showConfirm, guardNavigation, confirmLeave, cancelLeave } = useUnsavedChanges(isDirty)
 
@@ -226,6 +313,7 @@ export default function SalesDocForm({ mode, saleType, accountDocId }: Props) {
         setDueDate(toDateInputValue(d.dueDate))
         setPaymentMethod(d.paymentMethod || 'Cash')
         setPaidAmount(d.paidAmount != null ? String(d.paidAmount) : '')
+        setVatRate(d.vatRate != null ? String(d.vatRate) : '0')
         setItems((d.items || []).map(it => ({ ...it, localKey: newLocalKey() })))
       })
       .catch(() => toast.error(sd.loadDocFailed))
@@ -253,7 +341,30 @@ export default function SalesDocForm({ mode, saleType, accountDocId }: Props) {
     markDirty()
   }
 
-  const totalAmount = items.reduce((s, i) => s + (i.totalPrice || 0), 0)
+  // ปรับแก้ #7: สรุปยอดฝั่งหน้าเอกสารแม่ — mirror ของ server (AccountDocRepository.SyncAccountDocItems)
+  const totals = useMemo(() => {
+    const rate = parseFloat(vatRate) || 0
+    let totalPrice = 0, discountAmount = 0, vatAmount = 0, withholdingTaxAmount = 0
+    for (const item of items) {
+      const calc = calcItemAmounts({
+        quantity: item.quantity || 0,
+        unitPrice: item.unitPrice || 0,
+        itemDiscountType: item.itemDiscountType ?? null,
+        itemDiscountValue: item.itemDiscountValue || 0,
+        vatEnabled: !!item.vatEnabled,
+        withholdingTaxEnabled: !!item.withholdingTaxEnabled,
+        withholdingTaxRate: item.withholdingTaxRate || 0,
+      }, rate)
+      totalPrice += calc.gross
+      discountAmount += calc.discountAmount
+      vatAmount += calc.vatAmount
+      withholdingTaxAmount += calc.withholdingTaxAmount
+    }
+    const netAmount = totalPrice - discountAmount
+    const totalWithVat = netAmount + vatAmount
+    const grandTotal = totalWithVat - withholdingTaxAmount
+    return { totalPrice, discountAmount, netAmount, vatAmount, totalWithVat, withholdingTaxAmount, grandTotal }
+  }, [items, vatRate])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -271,6 +382,7 @@ export default function SalesDocForm({ mode, saleType, accountDocId }: Props) {
       dueDate: saleType === 'credit' && dueDate ? new Date(dueDate).toISOString() : undefined,
       paymentMethod: saleType === 'cash' ? paymentMethod : undefined,
       paidAmount: saleType === 'cash' && paidAmount ? parseFloat(paidAmount) : undefined,
+      vatRate: parseFloat(vatRate) || 0,
       items: items.map(({ localKey, ...rest }) => rest),
     }
 
@@ -323,6 +435,16 @@ export default function SalesDocForm({ mode, saleType, accountDocId }: Props) {
           <h1 className="text-lg font-bold truncate">{mode === 'add' ? tt.createTitle : tt.editTitle}</h1>
           {doc?.documentNo && <p className="text-xs text-primary-100 mt-0.5">{doc.documentNo}</p>}
         </div>
+        {mode === 'edit' && doc && (
+          <button
+            type="button"
+            onClick={() => setJsonModalOpen(true)}
+            title={t.common.rawJson}
+            className="p-2 rounded-lg text-white/80 hover:bg-white/15 hover:text-white transition-colors flex-none"
+          >
+            <FileJson className="w-5 h-5" />
+          </button>
+        )}
         {mode === 'edit' && <DocStatusBadge status={doc?.status} label={statusLabel} />}
       </div>
 
@@ -388,7 +510,7 @@ export default function SalesDocForm({ mode, saleType, accountDocId }: Props) {
           </div>
 
           {/* Items */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex-1">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100">
             <div className="px-7 py-4 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-lg bg-primary-50 flex items-center justify-center flex-none">
@@ -450,17 +572,44 @@ export default function SalesDocForm({ mode, saleType, accountDocId }: Props) {
                     )
                   })}
                 </tbody>
-                {items.length > 0 && (
-                  <tfoot>
-                    <tr className="border-t-2 border-primary-100 bg-primary-50/60">
-                      <td colSpan={3} className="px-5 py-3 text-xs font-bold text-primary-700 uppercase tracking-wide text-right">{sd.colTotalAmount}</td>
-                      <td className="px-5 py-3 text-right tabular-nums font-bold text-primary-800">{fmtNumber(totalAmount)}</td>
-                      {!readOnly && <td />}
-                    </tr>
-                  </tfoot>
-                )}
               </table>
             </div>
+
+            {/* ปรับแก้ #7: สรุปยอด VAT / ส่วนลด / หัก ณ ที่จ่าย ของทั้งเอกสาร — สไตล์ใบเสร็จ แยกกลุ่มด้วยเส้นคั่น */}
+            {items.length > 0 && (
+              <div className="px-7 py-5 border-t border-gray-100 flex justify-end">
+                <div className="w-full max-w-sm rounded-xl bg-gray-50 border border-gray-100 overflow-hidden">
+                  <div className="px-5 py-4 space-y-1.5 text-sm">
+                    <SummaryRow label={sd.summaryAmount} value={totals.totalPrice} />
+                    <SummaryRow label={sd.summaryDiscount} value={totals.discountAmount} />
+                  </div>
+                  <div className="px-5 py-3 border-t border-gray-200 bg-white/60 flex items-center justify-between">
+                    <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">{sd.summaryNetAmount}</span>
+                    <span className="tabular-nums font-bold text-gray-900">{fmtNumber(totals.netAmount)}</span>
+                  </div>
+                  <div className="px-5 py-4 border-t border-gray-200 space-y-1.5 text-sm">
+                    <div className="flex items-center justify-between py-0.5">
+                      <span className="text-gray-500">{sd.fieldVatRate}</span>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="number" value={vatRate} onChange={e => { setVatRate(e.target.value); markDirty() }}
+                          disabled={readOnly} min={0} step="any"
+                          className={clsx('w-20 px-2 py-1 text-right text-sm border border-gray-200 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary-500', readOnly && 'bg-gray-50 text-gray-500')}
+                        />
+                        <span className="text-gray-400">%</span>
+                      </div>
+                    </div>
+                    <SummaryRow label={sd.summaryVatAmount} value={totals.vatAmount} />
+                    <SummaryRow label={sd.summaryTotalWithVat} value={totals.totalWithVat} bold />
+                    <SummaryRow label={sd.summaryWithholdingTax} value={totals.withholdingTaxAmount} />
+                  </div>
+                  <div className="px-5 py-4 border-t border-gray-200 bg-primary-50/60 flex items-center justify-between">
+                    <span className="text-sm font-bold text-primary-800">{sd.summaryGrandTotal}</span>
+                    <span className="text-lg font-bold text-primary-700 tabular-nums">{fmtNumber(totals.grandTotal)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -481,12 +630,28 @@ export default function SalesDocForm({ mode, saleType, accountDocId }: Props) {
           initial={itemModal.editing}
           serviceOptions={serviceOptions}
           itemOptions={itemOptions}
+          vatRate={parseFloat(vatRate) || 0}
           onSave={handleItemModalSave}
           onClose={() => setItemModal({ open: false, editing: null })}
         />
       )}
 
+      {jsonModalOpen && doc && (
+        <JsonViewerModal data={doc} title={`${t.common.rawJson} — ${doc.documentNo ?? ''}`} onClose={() => setJsonModalOpen(false)} />
+      )}
+
       {showConfirm && <LeaveConfirmModal onConfirm={confirmLeave} onCancel={cancelLeave} />}
+    </div>
+  )
+}
+
+function SummaryRow({ label, value, bold }: { label: string; value: number; bold?: boolean }) {
+  return (
+    <div className="flex items-center justify-between py-0.5">
+      <span className={clsx('text-gray-500', bold && 'font-semibold text-gray-700')}>{label}</span>
+      <span className={clsx('tabular-nums', bold ? 'font-bold text-gray-900' : 'text-gray-700')}>
+        {fmtNumber(value)}
+      </span>
     </div>
   )
 }

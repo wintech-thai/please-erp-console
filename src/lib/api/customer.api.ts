@@ -78,34 +78,35 @@ export interface SaveCustomerAddressPayload {
   address: string
 }
 
+// x011 ปรับแก้ #4: ใช้ endpoint V2 (async) ทั้งหมด — ตัวเดิมแบบ sync ยังเก็บไว้ให้ Please Scan ใช้ต่อ
 export const customerApi = {
   getCustomers: (payload: GetCustomersPayload = {}) =>
-    client.post<CustomerItem[]>(`${getBase()}/GetCustomers`, payload),
+    client.post<CustomerItem[]>(`${getBase()}/GetCustomersV2`, payload),
 
   getCustomerCount: (payload: GetCustomersPayload = {}) =>
-    client.post<number>(`${getBase()}/GetCustomerCount`, payload),
+    client.post<number>(`${getBase()}/GetCustomerCountV2`, payload),
 
   getCustomerById: (entityId: string) =>
-    client.get<CustomerItem>(`${getBase()}/GetCustomerById/${entityId}`),
+    client.get<CustomerItem>(`${getBase()}/GetCustomerByIdV2/${entityId}`),
 
   addCustomer: (payload: SaveCustomerPayload) =>
-    client.post<CustomerResponse>(`${getBase()}/AddCustomer`, payload),
+    client.post<CustomerResponse>(`${getBase()}/AddCustomerV2`, payload),
 
   updateCustomerById: (entityId: string, payload: Partial<SaveCustomerPayload>) =>
-    client.post<CustomerResponse>(`${getBase()}/UpdateCustomerById/${entityId}`, payload),
+    client.post<CustomerResponse>(`${getBase()}/UpdateCustomerByIdV2/${entityId}`, payload),
 
   deleteCustomerById: (entityId: string) =>
-    client.delete<CustomerResponse>(`${getBase()}/DeleteCustomerCascadeById/${entityId}`),
+    client.delete<CustomerResponse>(`${getBase()}/DeleteCustomerCascadeByIdV2/${entityId}`),
 
   getCustomerAddresses: (entityId: string) =>
-    client.get<CustomerAddress[]>(`${getBase()}/GetCustomerAddressesByEntityId/${entityId}`),
+    client.get<CustomerAddress[]>(`${getBase()}/GetCustomerAddressesByEntityIdV2/${entityId}`),
 
   addCustomerAddress: (entityId: string, payload: SaveCustomerAddressPayload) =>
-    client.post<CustomerAddressResponse>(`${getBase()}/AddCustomerAddress/${entityId}`, payload),
+    client.post<CustomerAddressResponse>(`${getBase()}/AddCustomerAddressV2/${entityId}`, payload),
 
   updateCustomerAddressById: (entityId: string, addressId: string, payload: SaveCustomerAddressPayload) =>
-    client.post<CustomerAddressResponse>(`${getBase()}/UpdateCustomerAddressById/${entityId}/${addressId}`, payload),
+    client.post<CustomerAddressResponse>(`${getBase()}/UpdateCustomerAddressByIdV2/${entityId}/${addressId}`, payload),
 
   deleteCustomerAddressById: (entityId: string, addressId: string) =>
-    client.delete<CustomerAddressResponse>(`${getBase()}/DeleteCustomerAddressById/${entityId}/${addressId}`),
+    client.delete<CustomerAddressResponse>(`${getBase()}/DeleteCustomerAddressByIdV2/${entityId}/${addressId}`),
 }

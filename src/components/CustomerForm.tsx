@@ -18,6 +18,12 @@ function newLocalKey() {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `k${Date.now()}-${Math.random()}`
 }
 
+// Persist the highlighted address row across navigating away and back — localKey is
+// regenerated on every load, so this keys off the stable server-side address id instead.
+function addressHighlightStorageKey(entityId: string) {
+  return `customer-address-highlight:${entityId}`
+}
+
 // ─── Address modal ──────────────────────────────────────────────────────────────
 
 function AddressModal({ initial, addressTypeOptions, onSave, onClose }: {
@@ -100,6 +106,7 @@ export default function CustomerForm({ mode, entityId }: Props) {
   const [addresses, setAddresses] = useState<LocalAddress[]>([])
   const [removedAddressIds, setRemovedAddressIds] = useState<string[]>([])
   const [addressModal, setAddressModal] = useState<{ open: boolean; editing: LocalAddress | null }>({ open: false, editing: null })
+  const [highlightedKey, setHighlightedKey] = useState<string | null>(null)
 
   const [saving, setSaving] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
@@ -124,9 +131,15 @@ export default function CustomerForm({ mode, entityId }: Props) {
         setTaxId(d.taxId || '')
         setCreditTermDay(d.creditTermDay != null ? String(d.creditTermDay) : '')
         setCreditAmount(d.creditAmount != null ? String(d.creditAmount) : '')
-        setAddresses((d.addresses || []).map((a: CustomerAddress) => ({
+        const loadedAddresses = (d.addresses || []).map((a: CustomerAddress) => ({
           localKey: newLocalKey(), id: a.id, addressType: a.addressType || '', address: a.address || '',
-        })))
+        }))
+        setAddresses(loadedAddresses)
+
+        try {
+          const storedId = sessionStorage.getItem(addressHighlightStorageKey(entityId))
+          if (storedId && loadedAddresses.some(a => a.id === storedId)) setHighlightedKey(storedId)
+        } catch { /* ignore — sessionStorage unavailable */ }
       })
       .catch(() => toast.error(cu.loadFailed))
       .finally(() => setLoading(false))
@@ -238,17 +251,57 @@ export default function CustomerForm({ mode, entityId }: Props) {
               </div>
               <h3 className="text-sm font-bold text-gray-900">{cu.title}</h3>
             </div>
-            <div className="max-w-3xl space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <FormField label={cu.fieldCode} required>
-                  <input type="text" value={code} onChange={e => { setCode(e.target.value); markDirty() }} placeholder={cu.fieldCodePlaceholder} className={inputCls} />
-                </FormField>
-                <FormField label={cu.fieldName} required>
-                  <input type="text" value={name} onChange={e => { setName(e.target.value); markDirty() }} placeholder={cu.fieldNamePlaceholder} className={inputCls} />
-                </FormField>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField label={cu.fieldCode} required>
+                    <input type="text" value={code} onChange={e => { setCode(e.target.value); markDirty() }} placeholder={cu.fieldCodePlaceholder} className={inputCls} />
+                  </FormField>
+                  <FormField label={cu.fieldName} required>
+                    <input type="text" value={name} onChange={e => { setName(e.target.value); markDirty() }} placeholder={cu.fieldNamePlaceholder} className={inputCls} />
+                  </FormField>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField label={cu.fieldNationalCardId}>
+                    <input type="text" value={nationalCardId} onChange={e => { setNationalCardId(e.target.value); markDirty() }} className={inputCls} />
+                  </FormField>
+                  <FormField label={cu.fieldTaxId}>
+                    <input type="text" value={taxId} onChange={e => { setTaxId(e.target.value); markDirty() }} className={inputCls} />
+                  </FormField>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField label={cu.fieldPhone}>
+                    <input
+                      type="text" value={primaryPhone}
+                      onChange={e => { setPrimaryPhone(e.target.value); markDirty() }}
+                      disabled={mode === 'edit'}
+                      className={clsx(inputCls, mode === 'edit' && 'bg-gray-50 text-gray-500')}
+                    />
+                  </FormField>
+                  <FormField label={cu.fieldEmail}>
+                    <input
+                      type="email" value={primaryEmail}
+                      onChange={e => { setPrimaryEmail(e.target.value); markDirty() }}
+                      disabled={mode === 'edit'}
+                      className={clsx(inputCls, mode === 'edit' && 'bg-gray-50 text-gray-500')}
+                    />
+                  </FormField>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField label={cu.fieldCreditTermDay}>
+                    <input type="number" value={creditTermDay} onChange={e => { setCreditTermDay(e.target.value); markDirty() }} className={inputCls} min={0} step="1" />
+                  </FormField>
+                  <FormField label={cu.fieldCreditAmount}>
+                    <input type="number" value={creditAmount} onChange={e => { setCreditAmount(e.target.value); markDirty() }} className={inputCls} min={0} step="any" />
+                  </FormField>
+                </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              {/* ปรับแก้ #2: ย้าย 3 dropdown มาไว้แผงด้านขวาแทนที่จะวางแถวบนสุด */}
+              <div className="lg:col-span-1 space-y-4 lg:border-l lg:border-gray-100 lg:pl-6">
                 <FormField label={cu.fieldCategory}>
                   <select value={entityCategory} onChange={e => { setEntityCategory(e.target.value); markDirty() }} className={inputCls}>
                     <option value="">—</option>
@@ -267,43 +320,6 @@ export default function CustomerForm({ mode, entityId }: Props) {
                     <option value="">—</option>
                     {customerGroupOptions.map(o => <option key={o.id} value={o.id}>{o.description || o.code}</option>)}
                   </select>
-                </FormField>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <FormField label={cu.fieldNationalCardId}>
-                  <input type="text" value={nationalCardId} onChange={e => { setNationalCardId(e.target.value); markDirty() }} className={inputCls} />
-                </FormField>
-                <FormField label={cu.fieldTaxId}>
-                  <input type="text" value={taxId} onChange={e => { setTaxId(e.target.value); markDirty() }} className={inputCls} />
-                </FormField>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <FormField label={cu.fieldPhone}>
-                  <input
-                    type="text" value={primaryPhone}
-                    onChange={e => { setPrimaryPhone(e.target.value); markDirty() }}
-                    disabled={mode === 'edit'}
-                    className={clsx(inputCls, mode === 'edit' && 'bg-gray-50 text-gray-500')}
-                  />
-                </FormField>
-                <FormField label={cu.fieldEmail}>
-                  <input
-                    type="email" value={primaryEmail}
-                    onChange={e => { setPrimaryEmail(e.target.value); markDirty() }}
-                    disabled={mode === 'edit'}
-                    className={clsx(inputCls, mode === 'edit' && 'bg-gray-50 text-gray-500')}
-                  />
-                </FormField>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <FormField label={cu.fieldCreditTermDay}>
-                  <input type="number" value={creditTermDay} onChange={e => { setCreditTermDay(e.target.value); markDirty() }} className={inputCls} min={0} step="1" />
-                </FormField>
-                <FormField label={cu.fieldCreditAmount}>
-                  <input type="number" value={creditAmount} onChange={e => { setCreditAmount(e.target.value); markDirty() }} className={inputCls} min={0} step="any" />
                 </FormField>
               </div>
             </div>
@@ -335,24 +351,46 @@ export default function CustomerForm({ mode, entityId }: Props) {
                 <tbody>
                   {addresses.length === 0 ? (
                     <tr><td colSpan={3} className="py-10 text-center text-sm text-gray-400">{cu.noAddress}</td></tr>
-                  ) : addresses.map((addr, idx) => (
-                    <tr key={addr.localKey} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}>
-                      <td className="px-5 py-3 font-medium text-gray-800">
-                        {addressTypes.find(o => o.id === addr.addressType)?.description || addr.addressType}
-                      </td>
-                      <td className="px-5 py-3 text-gray-600 max-w-md"><span className="line-clamp-2">{addr.address}</span></td>
-                      <td className="px-5 py-3">
-                        <div className="flex items-center gap-1">
-                          <button type="button" onClick={() => handleEditAddress(addr)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors">
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          <button type="button" onClick={() => handleRemoveAddress(addr)} className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 transition-colors">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  ) : addresses.map((addr, idx) => {
+                    const rowKey = addr.id ?? addr.localKey
+                    const highlighted = highlightedKey === rowKey
+                    return (
+                      <tr
+                        key={addr.localKey}
+                        onClick={() => {
+                          const next = highlighted ? null : rowKey
+                          setHighlightedKey(next)
+                          if (entityId) {
+                            try {
+                              if (next && addr.id) sessionStorage.setItem(addressHighlightStorageKey(entityId), addr.id)
+                              else sessionStorage.removeItem(addressHighlightStorageKey(entityId))
+                            } catch { /* ignore — sessionStorage unavailable */ }
+                          }
+                        }}
+                        className={clsx(
+                          'border-b border-gray-50 cursor-pointer transition-colors',
+                          highlighted
+                            ? '!bg-primary-100 border-l-[3px] border-l-primary-500'
+                            : idx % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-50/40 hover:bg-gray-100/50'
+                        )}
+                      >
+                        <td className="px-5 py-3 font-medium text-gray-800">
+                          {addressTypes.find(o => o.id === addr.addressType)?.description || addr.addressType}
+                        </td>
+                        <td className="px-5 py-3 text-gray-600 max-w-md"><span className="line-clamp-2">{addr.address}</span></td>
+                        <td className="px-5 py-3" onClick={e => e.stopPropagation()}>
+                          <div className="flex items-center gap-1">
+                            <button type="button" onClick={() => handleEditAddress(addr)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors">
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button type="button" onClick={() => handleRemoveAddress(addr)} className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 transition-colors">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
