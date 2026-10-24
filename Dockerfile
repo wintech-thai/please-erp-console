@@ -1,10 +1,10 @@
-FROM node:20-alpine AS deps
+FROM node:22.23.4-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package.json ./
 RUN npm install
 
-FROM node:20-alpine AS builder
+FROM node:22.23.4-alpine AS builder
 ARG version="dev-local"
 ARG build_date=""
 ARG NEXT_PUBLIC_WEB_ROLE="ADMIN"
@@ -19,7 +19,7 @@ ENV NEXT_PUBLIC_BUILD_DATE=$build_date
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
-FROM node:20-alpine AS runner
+FROM node:22.23.4-alpine AS runner
 ARG version="dev-local"
 WORKDIR /app
 
