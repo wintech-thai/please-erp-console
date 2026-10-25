@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { toast } from 'sonner'
+import { AxiosError } from 'axios'
 import { ChevronLeft, X } from 'lucide-react'
 import { useLang } from '@/context/LanguageContext'
 import { masterRefApi } from '@/lib/api/master-ref.api'
@@ -58,8 +59,10 @@ export default function AddMasterDataPage() {
       toast.success(md.addSuccess)
       setIsDirty(false)
       router.push(`/business/master-data?type=${refType}`)
-    } catch {
-      toast.error(md.failedToAdd)
+    } catch (err) {
+      const axiosErr = err as AxiosError
+      if (axiosErr.code === 'DUPLICATE') toast.error(md.duplicateCode)
+      else toast.error(axiosErr.message || md.failedToAdd)
     } finally {
       setSaving(false)
     }

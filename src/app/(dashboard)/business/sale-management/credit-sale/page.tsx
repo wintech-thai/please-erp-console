@@ -1,5 +1,5 @@
-import ComingSoonPage from '@/components/ComingSoonPage'
+import SalesDocList from '@/components/SalesDocList'
 
 export default function CreditSalePage() {
-  return <ComingSoonPage titleEn="Credit Sale" titleTh="ขายเชื่อ" />
+  return <SalesDocList saleType="credit" />
 }

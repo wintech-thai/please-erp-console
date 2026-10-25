@@ -216,6 +216,11 @@ export default function StockOutForm({ mode, inventoryDocId }: Props) {
     const location = locations.find(l => l.id === fromLocationId)
     if (!fromLocationId) { toast.error(so.requiredFields); return }
 
+    if (mode === 'edit' && inventoryDocId && !isDirty) {
+      router.push(`/business/inventory/stock-out?highlight=${inventoryDocId}`)
+      return
+    }
+
     const payload = {
       description: description || undefined,
       fromLocationId,

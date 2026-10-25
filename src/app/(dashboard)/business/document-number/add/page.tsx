@@ -10,7 +10,7 @@ import { documentNumberApi } from '@/lib/api/document-number.api'
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges'
 import LeaveConfirmModal from '@/components/LeaveConfirmModal'
 
-const DOCUMENT_TYPES = ['InventoryImport', 'InventoryExport', 'InventoryTransfer', 'TempDocumentNo'] as const
+const DOCUMENT_TYPES = ['InventoryImport', 'InventoryExport', 'InventoryTransfer', 'TempDocumentNo', 'CreditInvoice', 'CashInvoice'] as const
 const RESET_TYPES = ['Monthly', 'Yearly'] as const
 
 export default function AddDocumentNumberPage() {
