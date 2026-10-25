@@ -72,14 +72,15 @@ function ItemModal({ initial, serviceOptions, itemOptions, vatRate, onSave, onCl
 
   const [productType, setProductType] = useState<ProductType>((initial?.productType as ProductType) || 'Service')
   const [productId, setProductId] = useState(initial?.productId || '')
-  const [customName, setCustomName] = useState(productType === 'Custom' ? (initial?.productDesc || '') : '')
+  const [customName, setCustomName] = useState(initial?.productDesc || '')
   const [quantity, setQuantity] = useState(initial?.quantity?.toString() || '1')
   const [unitPrice, setUnitPrice] = useState(initial?.unitPrice?.toString() || '')
-  const [discountType, setDiscountType] = useState<ItemDiscountType | ''>((initial?.itemDiscountType as ItemDiscountType) || '')
+  const [discountType, setDiscountType] = useState<ItemDiscountType>((initial?.itemDiscountType as ItemDiscountType) || 'Amount')
   const [discountValue, setDiscountValue] = useState(initial?.itemDiscountValue?.toString() || '')
   const [vatEnabled, setVatEnabled] = useState(!!initial?.vatEnabled)
   const [whtEnabled, setWhtEnabled] = useState(!!initial?.withholdingTaxEnabled)
   const [whtRate, setWhtRate] = useState(initial?.withholdingTaxRate?.toString() || '3')
+  const [remark, setRemark] = useState(initial?.tags || '')
 
   const total = (parseFloat(quantity) || 0) * (parseFloat(unitPrice) || 0)
   const calc = calcItemAmounts({
@@ -122,6 +123,8 @@ function ItemModal({ initial, serviceOptions, itemOptions, vatRate, onSave, onCl
     }
   }
 
+  // ปรับแก้: หัก ณ ที่จ่าย/VAT ใช้ได้ทุกประเภท item
+
   function handleSave() {
     const qty = parseFloat(quantity)
     if (!qty || qty <= 0 || !customName) { toast.error(sd.itemRequiredFields); return }
@@ -141,21 +144,22 @@ function ItemModal({ initial, serviceOptions, itemOptions, vatRate, onSave, onCl
       quantity: qty,
       unitPrice: parseFloat(unitPrice) || 0,
       totalPrice: total,
+      tags: remark || undefined,
       itemDiscountType: discountType || null,
       itemDiscountValue: parseFloat(discountValue) || 0,
       itemDiscountAmount: calc.discountAmount,
       netAmount: calc.netAmount,
-      vatEnabled: productType === 'Service' ? vatEnabled : false,
-      vatAmount: productType === 'Service' ? calc.vatAmount : 0,
-      withholdingTaxEnabled: productType === 'Service' ? whtEnabled : false,
-      withholdingTaxRate: productType === 'Service' ? (parseFloat(whtRate) || 0) : null,
-      withholdingTaxAmount: productType === 'Service' ? calc.withholdingTaxAmount : 0,
+      vatEnabled,
+      vatAmount: calc.vatAmount,
+      withholdingTaxEnabled: whtEnabled,
+      withholdingTaxRate: parseFloat(whtRate) || 0,
+      withholdingTaxAmount: calc.withholdingTaxAmount,
     })
   }
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-lg rounded-2xl shadow-2xl bg-white overflow-hidden" onClick={e => e.stopPropagation()}>
+      <div className="w-full max-w-xl rounded-2xl shadow-2xl bg-white overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="px-6 py-4 border-b border-gray-100">
           <h3 className="text-base font-bold text-gray-900">{initial ? sd.itemModalTitleEdit : sd.itemModalTitleAdd}</h3>
         </div>
@@ -184,62 +188,86 @@ function ItemModal({ initial, serviceOptions, itemOptions, vatRate, onSave, onCl
             </FormField>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          {/* ปรับแก้ #9: จัดกลุ่มฟิลด์ตามเลย์เอาต์ legacy — จำนวน/ราคา/ราคารวม แถวเดียวกัน */}
+          <div className="grid grid-cols-3 gap-3">
             <FormField label={sd.fieldQuantity} required>
               <input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} className={inputCls} min={0} step="any" />
             </FormField>
             <FormField label={sd.fieldUnitPrice}>
               <input type="number" value={unitPrice} onChange={e => setUnitPrice(e.target.value)} className={inputCls} min={0} step="any" />
             </FormField>
+            <FormField label={sd.fieldTotalAmount}>
+              <input type="text" value={fmtNumber(total)} readOnly className={clsx(inputCls, 'bg-gray-50 text-gray-500')} />
+            </FormField>
           </div>
-          <FormField label={sd.fieldTotalAmount}>
-            <input type="text" value={fmtNumber(total)} readOnly className={clsx(inputCls, 'bg-gray-50 text-gray-500')} />
-          </FormField>
 
-          {/* ปรับแก้ #6: ส่วนลดระดับ item เลือกได้ % หรือจำนวนเงิน */}
-          <FormField label={sd.fieldItemDiscount}>
-            <div className="flex gap-2">
-              <select value={discountType} onChange={e => setDiscountType(e.target.value as ItemDiscountType | '')} className={clsx(inputCls, 'w-32 flex-none')}>
-                <option value="">{sd.discountTypeNone}</option>
-                <option value="Percent">%</option>
-                <option value="Amount">{sd.discountTypeAmount}</option>
-              </select>
-              <input
-                type="number" value={discountValue} onChange={e => setDiscountValue(e.target.value)}
-                disabled={!discountType} className={clsx(inputCls, !discountType && 'bg-gray-50 text-gray-400')}
-                min={0} step="any"
-              />
-            </div>
-            {discountType && <p className="mt-1 text-xs text-gray-400">{sd.discountAmountLabel}: {fmtNumber(calc.discountAmount)}</p>}
-          </FormField>
-
-          {/* ปรับแก้ #7: VAT / หัก ณ ที่จ่าย เฉพาะ item ประเภทสินค้าและบริการทั่วไป */}
-          {productType === 'Service' && (
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 pt-1">
-              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                <input type="checkbox" checked={vatEnabled} onChange={e => setVatEnabled(e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
-                {sd.fieldVatEnabled}
-              </label>
-              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                <input type="checkbox" checked={whtEnabled} onChange={e => setWhtEnabled(e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
-                {sd.fieldWithholdingTaxEnabled}
-              </label>
-              {whtEnabled && (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500">%</span>
-                  <input type="number" value={whtRate} onChange={e => setWhtRate(e.target.value)} className={clsx(inputCls, 'w-20 py-1.5')} min={0} step="any" />
+          {/* ปรับแก้ #6 + #9: ส่วนลดระดับ item แบบ checkbox เป็น % เหมือน legacy คู่กับยอดสุทธิหลังหักส่วนลด */}
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label={sd.fieldItemDiscount}>
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+                  <input
+                    type="checkbox" checked={discountType === 'Percent'}
+                    onChange={e => setDiscountType(e.target.checked ? 'Percent' : 'Amount')}
+                    className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  />
+                  {sd.discountIsPercent}
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="number" placeholder="%"
+                    value={discountType === 'Percent' ? discountValue : ''}
+                    onChange={e => setDiscountValue(e.target.value)}
+                    disabled={discountType !== 'Percent'}
+                    className={clsx(inputCls, discountType !== 'Percent' && 'bg-gray-50 text-gray-400')}
+                    min={0} step="any"
+                  />
+                  <input
+                    type="number" placeholder={sd.discountTypeAmount}
+                    value={discountType === 'Amount' ? discountValue : ''}
+                    onChange={e => setDiscountValue(e.target.value)}
+                    disabled={discountType !== 'Amount'}
+                    className={clsx(inputCls, discountType !== 'Amount' && 'bg-gray-50 text-gray-400')}
+                    min={0} step="any"
+                  />
                 </div>
-              )}
-            </div>
-          )}
+              </div>
+            </FormField>
+            <FormField label={sd.netAmountLabel}>
+              <div className="space-y-2">
+                {/* spacer เพื่อให้ช่องยอดรวมสุทธิอยู่บรรทัดเดียวกับช่องส่วนลด (ชดเชยแถว checkbox ด้านซ้าย) */}
+                <div className="flex items-center gap-2 text-xs invisible">
+                  <input type="checkbox" className="w-4 h-4" readOnly />
+                  {sd.discountIsPercent}
+                </div>
+                <input type="text" value={fmtNumber(calc.netAmount)} readOnly className={clsx(inputCls, 'bg-gray-50 text-gray-500 font-semibold')} />
+              </div>
+            </FormField>
+          </div>
 
-          {(discountType || vatEnabled || whtEnabled) && (
-            <div className="rounded-lg bg-gray-50 border border-gray-100 px-4 py-3 text-xs text-gray-600 space-y-1">
-              <div className="flex justify-between"><span>{sd.netAmountLabel}</span><span className="font-semibold text-gray-800">{fmtNumber(calc.netAmount)}</span></div>
-              {vatEnabled && <div className="flex justify-between"><span>{sd.vatAmountLabel}</span><span className="font-semibold text-gray-800">{fmtNumber(calc.vatAmount)}</span></div>}
-              {whtEnabled && <div className="flex justify-between"><span>{sd.withholdingAmountLabel}</span><span className="font-semibold text-gray-800">{fmtNumber(calc.withholdingTaxAmount)}</span></div>}
-            </div>
-          )}
+          {/* ปรับแก้ #9: หมายเหตุระดับ item (เก็บลงฟิลด์ tags เดิม) */}
+          <FormField label={sd.fieldItemRemark}>
+            <input type="text" value={remark} onChange={e => setRemark(e.target.value)} placeholder={sd.fieldItemRemarkPlaceholder} className={inputCls} />
+          </FormField>
+
+          {/* ปรับแก้ #7 + #9: VAT / หัก ณ ที่จ่าย ใช้ได้ทุกประเภท item */}
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-3 pt-1">
+            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+              <input type="checkbox" checked={whtEnabled} onChange={e => setWhtEnabled(e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+              {sd.fieldWithholdingTaxEnabled}
+            </label>
+            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+              <input type="checkbox" checked={vatEnabled} onChange={e => setVatEnabled(e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+              {sd.fieldVatEnabled}
+            </label>
+            {whtEnabled && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500 whitespace-nowrap flex-shrink-0">% {sd.fieldWithholdingTaxEnabled}</span>
+                <input type="number" value={whtRate} onChange={e => setWhtRate(e.target.value)} className={clsx(inputCls, 'w-20 py-1.5')} min={0} step="any" />
+              </div>
+            )}
+          </div>
+
         </div>
         <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3">
           <button onClick={onClose} className={cancelBtnCls}>{sd.itemModalCancel}</button>
@@ -327,6 +355,7 @@ export default function SalesDocForm({ mode, saleType, accountDocId }: Props) {
     () => customers.map(c => ({ code: c.id, label: c.name, sublabel: c.code })),
     [customers]
   )
+  const selectedCustomer = useMemo(() => customers.find(c => c.id === entityId), [customers, entityId])
 
   function handleAddItem() { setItemModal({ open: true, editing: null }) }
   function handleEditItem(item: LocalItem) { setItemModal({ open: true, editing: item }) }
@@ -355,12 +384,12 @@ export default function SalesDocForm({ mode, saleType, accountDocId }: Props) {
         withholdingTaxEnabled: !!item.withholdingTaxEnabled,
         withholdingTaxRate: item.withholdingTaxRate || 0,
       }, rate)
-      totalPrice += calc.gross
+      totalPrice += calc.netAmount
       discountAmount += calc.discountAmount
       vatAmount += calc.vatAmount
       withholdingTaxAmount += calc.withholdingTaxAmount
     }
-    const netAmount = totalPrice - discountAmount
+    const netAmount = totalPrice
     const totalWithVat = netAmount + vatAmount
     const grandTotal = totalWithVat - withholdingTaxAmount
     return { totalPrice, discountAmount, netAmount, vatAmount, totalWithVat, withholdingTaxAmount, grandTotal }
@@ -463,49 +492,71 @@ export default function SalesDocForm({ mode, saleType, accountDocId }: Props) {
               </div>
               <h3 className="text-sm font-bold text-gray-900">{sd.docInfoTitle}</h3>
             </div>
-            <div className="max-w-2xl space-y-4">
-              <FormField label={sd.fieldCustomer} required>
-                <SearchableSelect
-                  options={customerSelectOptions}
-                  value={entityId}
-                  onChange={v => { setEntityId(v); markDirty() }}
-                  placeholder={sd.fieldCustomerPlaceholder}
-                  disabled={readOnly}
-                />
-              </FormField>
-              <div className="grid grid-cols-2 gap-4">
-                <FormField label={sd.fieldDocDate}>
-                  <input type="date" value={documentDate} onChange={e => { setDocumentDate(e.target.value); markDirty() }} disabled={readOnly} className={clsx(inputCls, readOnly && 'bg-gray-50 text-gray-500')} />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-4">
+                <FormField label={sd.fieldCustomer} required>
+                  <SearchableSelect
+                    options={customerSelectOptions}
+                    value={entityId}
+                    onChange={v => { setEntityId(v); markDirty() }}
+                    placeholder={sd.fieldCustomerPlaceholder}
+                    disabled={readOnly}
+                  />
                 </FormField>
-                {saleType === 'credit' && (
-                  <FormField label={sd.fieldDueDate}>
-                    <input type="date" value={dueDate} onChange={e => { setDueDate(e.target.value); markDirty() }} disabled={readOnly} className={clsx(inputCls, readOnly && 'bg-gray-50 text-gray-500')} />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField label={sd.fieldDocDate}>
+                    <input type="date" value={documentDate} onChange={e => { setDocumentDate(e.target.value); markDirty() }} disabled={readOnly} className={clsx(inputCls, readOnly && 'bg-gray-50 text-gray-500')} />
+                  </FormField>
+                  {saleType === 'credit' && (
+                    <FormField label={sd.fieldDueDate}>
+                      <input type="date" value={dueDate} onChange={e => { setDueDate(e.target.value); markDirty() }} disabled={readOnly} className={clsx(inputCls, readOnly && 'bg-gray-50 text-gray-500')} />
+                    </FormField>
+                  )}
+                  {saleType === 'cash' && (
+                    <FormField label={sd.fieldPaymentMethod}>
+                      <select value={paymentMethod} onChange={e => { setPaymentMethod(e.target.value); markDirty() }} disabled={readOnly} className={clsx(inputCls, readOnly && 'bg-gray-50 text-gray-500')}>
+                        <option value="Cash">{sd.paymentMethodCash}</option>
+                        <option value="Transfer">{sd.paymentMethodTransfer}</option>
+                        <option value="Qr">{sd.paymentMethodQr}</option>
+                      </select>
+                    </FormField>
+                  )}
+                </div>
+                {saleType === 'cash' && (
+                  <FormField label={sd.fieldPaidAmount}>
+                    <input type="number" value={paidAmount} onChange={e => { setPaidAmount(e.target.value); markDirty() }} disabled={readOnly} className={clsx(inputCls, readOnly && 'bg-gray-50 text-gray-500')} min={0} step="any" />
                   </FormField>
                 )}
-                {saleType === 'cash' && (
-                  <FormField label={sd.fieldPaymentMethod}>
-                    <select value={paymentMethod} onChange={e => { setPaymentMethod(e.target.value); markDirty() }} disabled={readOnly} className={clsx(inputCls, readOnly && 'bg-gray-50 text-gray-500')}>
-                      <option value="Cash">{sd.paymentMethodCash}</option>
-                      <option value="Transfer">{sd.paymentMethodTransfer}</option>
-                      <option value="Qr">{sd.paymentMethodQr}</option>
-                    </select>
-                  </FormField>
+                <FormField label={sd.fieldDescription}>
+                  <textarea
+                    value={description}
+                    onChange={e => { setDescription(e.target.value); markDirty() }}
+                    disabled={readOnly}
+                    rows={2}
+                    className={clsx(inputCls, readOnly && 'bg-gray-50 text-gray-500')}
+                  />
+                </FormField>
+              </div>
+
+              {/* ปรับแก้: ใช้พื้นที่ว่างฝั่งขวาแสดงข้อมูลลูกค้าอ้างอิง แทนที่จะปล่อยว่าง */}
+              <div className="lg:col-span-1 lg:border-l lg:border-gray-100 lg:pl-6">
+                {selectedCustomer ? (
+                  <div className="space-y-3">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{sd.customerInfoTitle}</p>
+                    <CustomerInfoRow label={sd.fieldCustomerCode} value={selectedCustomer.code} />
+                    {selectedCustomer.taxId && <CustomerInfoRow label={sd.fieldTaxId} value={selectedCustomer.taxId} />}
+                    {selectedCustomer.primaryPhone && <CustomerInfoRow label={sd.fieldPhone} value={selectedCustomer.primaryPhone} />}
+                    {saleType === 'credit' && (
+                      <>
+                        <CustomerInfoRow label={sd.fieldCreditTermDay} value={selectedCustomer.creditTermDay != null ? `${selectedCustomer.creditTermDay} ${sd.days}` : '—'} />
+                        <CustomerInfoRow label={sd.fieldCreditAmount} value={selectedCustomer.creditAmount != null ? fmtNumber(selectedCustomer.creditAmount) : '—'} />
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400">{sd.customerInfoPlaceholder}</p>
                 )}
               </div>
-              {saleType === 'cash' && (
-                <FormField label={sd.fieldPaidAmount}>
-                  <input type="number" value={paidAmount} onChange={e => { setPaidAmount(e.target.value); markDirty() }} disabled={readOnly} className={clsx(inputCls, readOnly && 'bg-gray-50 text-gray-500')} min={0} step="any" />
-                </FormField>
-              )}
-              <FormField label={sd.fieldDescription}>
-                <textarea
-                  value={description}
-                  onChange={e => { setDescription(e.target.value); markDirty() }}
-                  disabled={readOnly}
-                  rows={2}
-                  className={clsx(inputCls, readOnly && 'bg-gray-50 text-gray-500')}
-                />
-              </FormField>
             </div>
           </div>
 
@@ -529,18 +580,25 @@ export default function SalesDocForm({ mode, saleType, accountDocId }: Props) {
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50/70 border-b border-gray-100">
-                    <th className="px-5 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{sd.colProduct}</th>
+                    <th className="px-5 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{sd.colCode}</th>
+                    <th className="px-5 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{sd.colName}</th>
                     <th className="px-5 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{sd.colQuantity}</th>
+                    <th className="px-5 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{sd.colUnit}</th>
                     <th className="px-5 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{sd.colUnitPrice}</th>
+                    <th className="px-5 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{sd.colDiscount}</th>
                     <th className="px-5 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{sd.colTotalAmount}</th>
                     {!readOnly && <th className="w-20 px-5 py-2.5" />}
                   </tr>
                 </thead>
                 <tbody>
                   {items.length === 0 ? (
-                    <tr><td colSpan={readOnly ? 4 : 5} className="py-10 text-center text-sm text-gray-400">{sd.noItems}</td></tr>
+                    <tr><td colSpan={readOnly ? 7 : 8} className="py-10 text-center text-sm text-gray-400">{sd.noItems}</td></tr>
                   ) : items.map((item, idx) => {
                     const highlighted = highlightedKey === item.localKey
+                    const unit = item.productType === 'InventoryItem'
+                      ? itemOptions.find(i => i.id === item.productId)?.unit || '-'
+                      : '-'
+                    const netAmount = item.netAmount ?? ((item.totalPrice || 0) - (item.itemDiscountAmount || 0))
                     return (
                       <tr
                         key={item.localKey}
@@ -552,10 +610,13 @@ export default function SalesDocForm({ mode, saleType, accountDocId }: Props) {
                             : idx % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-50/40 hover:bg-gray-100/50'
                         )}
                       >
-                        <td className="px-5 py-3 font-medium text-gray-800">{item.productDesc || item.productCode || '—'}</td>
+                        <td className="px-5 py-3 text-gray-600">{item.productCode || '—'}</td>
+                        <td className="px-5 py-3 font-medium text-gray-800">{item.productDesc || '—'}</td>
                         <td className="px-5 py-3 text-right tabular-nums text-gray-800">{fmtNumber(item.quantity)}</td>
+                        <td className="px-5 py-3 text-gray-600">{unit}</td>
                         <td className="px-5 py-3 text-right tabular-nums text-gray-600">{fmtNumber(item.unitPrice)}</td>
-                        <td className="px-5 py-3 text-right tabular-nums font-semibold text-gray-900">{fmtNumber(item.totalPrice)}</td>
+                        <td className="px-5 py-3 text-right tabular-nums text-gray-600">{fmtNumber(item.itemDiscountAmount || 0)}</td>
+                        <td className="px-5 py-3 text-right tabular-nums font-semibold text-gray-900">{fmtNumber(netAmount)}</td>
                         {!readOnly && (
                           <td className="px-5 py-3" onClick={e => e.stopPropagation()}>
                             <div className="flex items-center gap-1">
@@ -575,38 +636,27 @@ export default function SalesDocForm({ mode, saleType, accountDocId }: Props) {
               </table>
             </div>
 
-            {/* ปรับแก้ #7: สรุปยอด VAT / ส่วนลด / หัก ณ ที่จ่าย ของทั้งเอกสาร — สไตล์ใบเสร็จ แยกกลุ่มด้วยเส้นคั่น */}
+            {/* ปรับแก้ #7 + #9: สรุปยอดแนวนอน 3 คอลัมน์ ตามเลย์เอาต์ legacy ไม่ต้อง scroll */}
             {items.length > 0 && (
-              <div className="px-7 py-5 border-t border-gray-100 flex justify-end">
-                <div className="w-full max-w-sm rounded-xl bg-gray-50 border border-gray-100 overflow-hidden">
-                  <div className="px-5 py-4 space-y-1.5 text-sm">
-                    <SummaryRow label={sd.summaryAmount} value={totals.totalPrice} />
-                    <SummaryRow label={sd.summaryDiscount} value={totals.discountAmount} />
-                  </div>
-                  <div className="px-5 py-3 border-t border-gray-200 bg-white/60 flex items-center justify-between">
-                    <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">{sd.summaryNetAmount}</span>
-                    <span className="tabular-nums font-bold text-gray-900">{fmtNumber(totals.netAmount)}</span>
-                  </div>
-                  <div className="px-5 py-4 border-t border-gray-200 space-y-1.5 text-sm">
-                    <div className="flex items-center justify-between py-0.5">
-                      <span className="text-gray-500">{sd.fieldVatRate}</span>
-                      <div className="flex items-center gap-1.5">
-                        <input
-                          type="number" value={vatRate} onChange={e => { setVatRate(e.target.value); markDirty() }}
-                          disabled={readOnly} min={0} step="any"
-                          className={clsx('w-20 px-2 py-1 text-right text-sm border border-gray-200 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary-500', readOnly && 'bg-gray-50 text-gray-500')}
-                        />
-                        <span className="text-gray-400">%</span>
-                      </div>
-                    </div>
-                    <SummaryRow label={sd.summaryVatAmount} value={totals.vatAmount} />
-                    <SummaryRow label={sd.summaryTotalWithVat} value={totals.totalWithVat} bold />
-                    <SummaryRow label={sd.summaryWithholdingTax} value={totals.withholdingTaxAmount} />
-                  </div>
-                  <div className="px-5 py-4 border-t border-gray-200 bg-primary-50/60 flex items-center justify-between">
-                    <span className="text-sm font-bold text-primary-800">{sd.summaryGrandTotal}</span>
-                    <span className="text-lg font-bold text-primary-700 tabular-nums">{fmtNumber(totals.grandTotal)}</span>
-                  </div>
+              <div className="px-7 py-5 border-t border-gray-100">
+                <div className="grid grid-cols-3 gap-3">
+                  <SummaryBox label={sd.summaryAmount} value={fmtNumber(totals.totalPrice)} />
+                  <SummaryBox label={sd.summaryDiscount} value={fmtNumber(totals.discountAmount)} />
+                  <SummaryBox label={sd.summaryNetAmount} value={fmtNumber(totals.netAmount)} />
+
+                  <SummaryBox label={sd.fieldVatRate}>
+                    <input
+                      type="number" value={vatRate} onChange={e => { setVatRate(e.target.value); markDirty() }}
+                      disabled={readOnly} min={0} step="any"
+                      className={clsx('w-full bg-transparent text-sm font-semibold text-gray-900 tabular-nums focus:outline-none', readOnly && 'text-gray-500')}
+                    />
+                  </SummaryBox>
+                  <SummaryBox label={sd.summaryVatAmount} value={fmtNumber(totals.vatAmount)} />
+                  <SummaryBox label={sd.summaryTotalWithVat} value={fmtNumber(totals.totalWithVat)} />
+
+                  <SummaryBox label={sd.summaryWithholdingTax} value={fmtNumber(totals.withholdingTaxAmount)} />
+                  <SummaryBox label={sd.summaryGrandTotal} value={fmtNumber(totals.grandTotal)} />
+                  <SummaryBox label={sd.summaryAmountInWords} value={fmtNumber(totals.grandTotal)} highlight />
                 </div>
               </div>
             )}
@@ -645,13 +695,27 @@ export default function SalesDocForm({ mode, saleType, accountDocId }: Props) {
   )
 }
 
-function SummaryRow({ label, value, bold }: { label: string; value: number; bold?: boolean }) {
+function CustomerInfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between py-0.5">
-      <span className={clsx('text-gray-500', bold && 'font-semibold text-gray-700')}>{label}</span>
-      <span className={clsx('tabular-nums', bold ? 'font-bold text-gray-900' : 'text-gray-700')}>
-        {fmtNumber(value)}
-      </span>
+    <div className="flex items-center justify-between text-sm">
+      <span className="text-gray-500">{label}</span>
+      <span className="font-medium text-gray-800 text-right">{value}</span>
+    </div>
+  )
+}
+
+// กล่องสรุปยอดแบบ legacy — label บนเล็ก ๆ ค่าอยู่ล่างในกล่องสีเทา เรียง 3 คอลัมน์
+function SummaryBox({ label, value, highlight, children }: {
+  label: string; value?: string; highlight?: boolean; children?: React.ReactNode
+}) {
+  return (
+    <div className={clsx('rounded-lg border px-3 py-2', highlight ? 'bg-primary-50 border-primary-200' : 'bg-gray-50 border-gray-200')}>
+      <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1 truncate">{label}</p>
+      {children ?? (
+        <p className={clsx('tabular-nums truncate font-bold', highlight ? 'text-primary-700 text-base' : 'text-gray-900 text-sm')}>
+          {value}
+        </p>
+      )}
     </div>
   )
 }
