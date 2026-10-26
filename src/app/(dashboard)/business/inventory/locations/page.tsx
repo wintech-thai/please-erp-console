@@ -241,7 +241,11 @@ function InventoryLocationContent() {
                     </td>
                     <td className="px-6 py-4 text-gray-600">{typeLabel || '—'}</td>
                     <td className="px-4 py-4 text-center" onClick={e => e.stopPropagation()}>
-                      <button className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors">
+                      <button
+                        onClick={() => router.push(`/business/inventory/locations/${loc.id}/transactions`)}
+                        title={t.itemTransaction.actionLabel}
+                        className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors"
+                      >
                         <MoreHorizontal className="w-4 h-4" />
                       </button>
                     </td>

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { toast } from 'sonner'
+import { AxiosError } from 'axios'
 import { Search, Plus, Database, ChevronLeft, ChevronRight as ChevronRightIcon, MoreHorizontal, CheckCircle2, XCircle } from 'lucide-react'
 import clsx from 'clsx'
 import { useLang } from '@/context/LanguageContext'
@@ -186,8 +187,9 @@ function StockOutContent() {
       }
       setConfirmModal(null)
       fetchDocs()
-    } catch {
-      toast.error(confirmModal.action === 'approve' ? so.failedToApprove : so.failedToCancelDoc)
+    } catch (err) {
+      const axiosErr = err as AxiosError
+      toast.error(axiosErr.message || (confirmModal.action === 'approve' ? so.failedToApprove : so.failedToCancelDoc))
     } finally { setActioning(false) }
   }
 
@@ -321,7 +323,13 @@ function StockOutContent() {
                         <MoreHorizontal className="w-4 h-4" />
                       </button>
                       {doc.documentStatus === 'Pending' && openMenuId === doc.id && (
-                        <div ref={menuRef} className="absolute right-4 top-full mt-1 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-50 text-left">
+                        <div
+                          ref={menuRef}
+                          className={clsx(
+                            'absolute right-4 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-50 text-left',
+                            idx >= docs.length - 2 ? 'bottom-full mb-1' : 'top-full mt-1'
+                          )}
+                        >
                           <button
                             onClick={() => { setOpenMenuId(null); setConfirmModal({ action: 'approve', id: doc.id, docNo: doc.documentNo }) }}
                             className="w-full flex items-center gap-2 px-4 py-2 text-sm text-primary-700 hover:bg-primary-50 transition-colors whitespace-nowrap"
