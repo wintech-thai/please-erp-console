@@ -10,6 +10,7 @@ import { inventoryLocationApi, type InventoryLocationItem } from '@/lib/api/inve
 import { inventoryItemApi, type InventoryItemItem } from '@/lib/api/inventory-item.api'
 import { pointApi, type InventoryPointTx } from '@/lib/api/point.api'
 import { AdvancedTimeRangeSelector, type TimeRangeValue } from '@/components/AdvancedTimeRangeSelector'
+import { useMasterRefOptions } from '@/hooks/useMasterRefOptions'
 
 function getTimeFilter(tr: TimeRangeValue): { fromDate?: string; toDate?: string } {
   if (tr.type === 'absolute' && tr.start && tr.end) {
@@ -57,6 +58,9 @@ export default function TransactionHistoryPage() {
 
   const [location, setLocation] = useState<InventoryLocationItem | null>(null)
   const [item, setItem] = useState<InventoryItemItem | null>(null)
+  const { options: locationTypes } = useMasterRefOptions('LocationType')
+  const { options: itemTypes } = useMasterRefOptions('ItemType')
+  const { options: itemUnits } = useMasterRefOptions('ItemUnit')
   const [txs, setTxs] = useState<InventoryPointTx[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
@@ -81,9 +85,9 @@ export default function TransactionHistoryPage() {
     pointApi.getPointTxsByLocationItemId(locationId, itemId, { limit: 100, fromDate, toDate })
       .then(res => {
         const list = Array.isArray(res.data) ? res.data : []
-        // ให้เรียงจากเก่าไปใหม่ (ascending) เหมือนบัญชีแยกประเภท — ไม่แก้ sort order
-        // ฝั่ง backend เพราะ endpoint เดียวกันนี้ใช้ร่วมกับ Please Payment
-        const sorted = [...list].sort((a, b) => new Date(a.createdDate ?? 0).getTime() - new Date(b.createdDate ?? 0).getTime())
+        // ให้เรียงจากใหม่ไปเก่า (descending) — ไม่แก้ sort order ฝั่ง backend
+        // เพราะ endpoint เดียวกันนี้ใช้ร่วมกับ Please Payment
+        const sorted = [...list].sort((a, b) => new Date(b.createdDate ?? 0).getTime() - new Date(a.createdDate ?? 0).getTime())
         setTxs(sorted)
         setPage(1)
       })
@@ -145,20 +149,61 @@ export default function TransactionHistoryPage() {
 
   return (
     <div className="flex flex-col overflow-hidden h-[calc(100dvh-5rem)] sm:h-[calc(100dvh-6.5rem)]">
-      <div className="flex-none flex items-center gap-3 mb-6">
+      <div className="flex-none flex items-center gap-3 mb-4">
         <button onClick={() => router.back()} className="p-2 rounded-lg text-gray-500 hover:bg-gray-200 transition-colors">
           <ChevronLeft className="w-5 h-5" />
         </button>
         <div className="w-10 h-10 rounded-xl bg-primary-50 flex items-center justify-center flex-none">
           <History className="w-5 h-5 text-primary-600" />
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{it.txHistoryTitle}</h1>
-          <p className="text-base text-gray-500 mt-0.5">
-            {location ? `${location.code} ${location.name || ''}` : ''}
-            {location && item ? ' · ' : ''}
-            {item ? `${item.code} ${item.nameTh || ''}` : ''}
-          </p>
+        <h1 className="text-2xl font-bold text-gray-900">{it.txHistoryTitle}</h1>
+      </div>
+
+      <div className="flex-none grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="w-1 h-4 rounded-full bg-primary-500" />
+            <h2 className="text-sm font-semibold text-gray-700">{it.infoLocationTitle}</h2>
+          </div>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+            <div>
+              <p className="text-xs text-gray-400">{it.fieldCode}</p>
+              <p className="font-medium text-gray-800">{location?.code || '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400">{it.fieldType}</p>
+              <p className="font-medium text-gray-800">{locationTypes.find(o => o.code === location?.locationType)?.description || location?.locationType || '—'}</p>
+            </div>
+            <div className="col-span-2">
+              <p className="text-xs text-gray-400">{it.fieldName}</p>
+              <p className="font-medium text-gray-800">{location?.name || '—'}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="w-1 h-4 rounded-full bg-primary-500" />
+            <h2 className="text-sm font-semibold text-gray-700">{it.infoItemTitle}</h2>
+          </div>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+            <div>
+              <p className="text-xs text-gray-400">{it.fieldCode}</p>
+              <p className="font-medium text-gray-800">{item?.code || '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400">{it.fieldUnit}</p>
+              <p className="font-medium text-gray-800">{itemUnits.find(o => o.code === item?.unit)?.description || item?.unit || '—'}</p>
+            </div>
+            <div className="col-span-2">
+              <p className="text-xs text-gray-400">{it.fieldName}</p>
+              <p className="font-medium text-gray-800">{item?.nameTh || '—'}</p>
+            </div>
+            <div className="col-span-2">
+              <p className="text-xs text-gray-400">{it.fieldType}</p>
+              <p className="font-medium text-gray-800">{itemTypes.find(o => o.code === item?.itemType)?.description || item?.itemType || '—'}</p>
+            </div>
+          </div>
         </div>
       </div>
 
