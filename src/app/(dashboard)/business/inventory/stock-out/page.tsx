@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { toast } from 'sonner'
+import { AxiosError } from 'axios'
 import { Search, Plus, Database, ChevronLeft, ChevronRight as ChevronRightIcon, MoreHorizontal, CheckCircle2, XCircle } from 'lucide-react'
 import clsx from 'clsx'
 import { useLang } from '@/context/LanguageContext'
@@ -104,6 +105,7 @@ function StockOutContent() {
   const [statusFilter, setStatusFilter] = useState('')
   const [timeRange, setTimeRange] = useState<TimeRangeValue>({ type: 'relative', value: '30d' })
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [menuDirection, setMenuDirection] = useState<'up' | 'down'>('down')
   const [confirmModal, setConfirmModal] = useState<{ action: 'approve' | 'cancel'; id: string; docNo: string } | null>(null)
   const [actioning, setActioning] = useState(false)
   const [selectedRowId, setSelectedRowId] = useState<string | null>(() => {
@@ -111,7 +113,19 @@ function StockOutContent() {
     if (typeof window !== 'undefined') return sessionStorage.getItem(SS_KEY) ?? null
     return null
   })
-  const menuRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLTableCellElement>(null)
+
+  function toggleMenu(id: string, e: React.MouseEvent<HTMLButtonElement>) {
+    if (openMenuId === id) { setOpenMenuId(null); return }
+    const rect = e.currentTarget.getBoundingClientRect()
+    const estimatedMenuHeight = 96 // ~2 items (Approve + Cancel)
+    // เช็คกับขอบล่างของ scroll container (overflow-auto) ที่ครอบตารางอยู่ ไม่ใช่ขอบจอ
+    // เพราะ dropdown โดน clip โดย container นี้ก่อนจะโดน clip โดยขอบจอจริงๆ
+    const container = e.currentTarget.closest('.overflow-auto')
+    const limit = container ? container.getBoundingClientRect().bottom : window.innerHeight
+    setMenuDirection(rect.bottom + estimatedMenuHeight > Math.min(limit, window.innerHeight) ? 'up' : 'down')
+    setOpenMenuId(id)
+  }
 
   const fetchDocs = useCallback(async (
     search = searchTerm, status = statusFilter, tr = timeRange, p = page, perPage = itemsPerPage
@@ -186,8 +200,9 @@ function StockOutContent() {
       }
       setConfirmModal(null)
       fetchDocs()
-    } catch {
-      toast.error(confirmModal.action === 'approve' ? so.failedToApprove : so.failedToCancelDoc)
+    } catch (err) {
+      const axiosErr = err as AxiosError
+      toast.error(axiosErr.message || (confirmModal.action === 'approve' ? so.failedToApprove : so.failedToCancelDoc))
     } finally { setActioning(false) }
   }
 
@@ -313,15 +328,24 @@ function StockOutContent() {
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-center relative" onClick={e => e.stopPropagation()}>
+                    <td
+                      className="px-4 py-4 text-center relative"
+                      onClick={e => e.stopPropagation()}
+                      ref={openMenuId === doc.id ? menuRef : undefined}
+                    >
                       <button
-                        onClick={() => { if (doc.documentStatus === 'Pending') setOpenMenuId(prev => prev === doc.id ? null : doc.id) }}
+                        onClick={e => { if (doc.documentStatus === 'Pending') toggleMenu(doc.id, e) }}
                         className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors"
                       >
                         <MoreHorizontal className="w-4 h-4" />
                       </button>
                       {doc.documentStatus === 'Pending' && openMenuId === doc.id && (
-                        <div ref={menuRef} className="absolute right-4 top-full mt-1 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-50 text-left">
+                        <div
+                          className={clsx(
+                            'absolute right-4 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-50 text-left',
+                            menuDirection === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'
+                          )}
+                        >
                           <button
                             onClick={() => { setOpenMenuId(null); setConfirmModal({ action: 'approve', id: doc.id, docNo: doc.documentNo }) }}
                             className="w-full flex items-center gap-2 px-4 py-2 text-sm text-primary-700 hover:bg-primary-50 transition-colors whitespace-nowrap"
