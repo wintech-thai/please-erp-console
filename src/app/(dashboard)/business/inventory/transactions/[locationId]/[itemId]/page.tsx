@@ -35,6 +35,17 @@ function fmtDate(iso?: string | null) {
   return new Date(iso).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })
 }
 
+function getDocHref(tx: InventoryPointTx): string | null {
+  if (!tx.tags) return null
+  switch (tx.description) {
+    case 'StockIn': return `/business/inventory/stock-in/${tx.tags}/update`
+    case 'StockOut': return `/business/inventory/stock-out/${tx.tags}/update`
+    case 'Transfer-In':
+    case 'Transfer-Out': return `/business/inventory/stock-transfer/${tx.tags}/update`
+    default: return null
+  }
+}
+
 export default function TransactionHistoryPage() {
   const { t } = useLang()
   const it = t.itemTransaction
@@ -178,50 +189,71 @@ export default function TransactionHistoryPage() {
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{it.colDate}</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{it.colDocNo}</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{it.colTxType}</th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{it.colTxQuantity}</th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{it.colTxAmount}</th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{it.colAvgPriceBefore}</th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{it.colAvgPriceAfter}</th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{it.colQtyBefore}</th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{it.colQtyAfter}</th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{it.colValueBefore}</th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{it.colValueAfter}</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{it.colDescription}</th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap bg-slate-100">{it.colTxQuantity}</th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap bg-slate-100">{it.colUnitPrice}</th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap bg-slate-100">{it.colTxAmount}</th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap bg-amber-100">{it.colQtyBefore}</th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap bg-amber-100">{it.colAvgPriceBefore}</th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap bg-amber-100">{it.colValueBefore}</th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap bg-sky-100">{it.colQtyAfter}</th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap bg-sky-100">{it.colAvgPriceAfter}</th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap bg-sky-100">{it.colValueAfter}</th>
                 </tr>
               </thead>
               <tbody>
-                {pagedTxs.map((tx, idx) => (
-                  <tr
-                    key={tx.id}
-                    onClick={() => selectRow(tx.id)}
-                    className={clsx(
-                      'border-l-[3px] border-b border-gray-50 cursor-pointer transition-colors',
-                      highlightedId === tx.id
-                        ? '!bg-primary-100 border-l-primary-500'
-                        : clsx('border-l-transparent', idx % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-50/40 hover:bg-gray-100/50')
-                    )}
-                  >
-                    <td className="px-6 py-3 text-gray-600 whitespace-nowrap">{fmtDate(tx.createdDate)}</td>
-                    <td className="px-6 py-3 font-medium text-gray-800 whitespace-nowrap">{tx.tags2 || '—'}</td>
-                    <td className="px-6 py-3">
-                      <span className={clsx(
-                        'px-2 py-0.5 text-[10px] font-bold rounded-full ring-1',
-                        tx.txType === 1 ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-red-50 text-red-600 ring-red-200'
-                      )}>
-                        {tx.txType === 1 ? it.txTypeIn : it.txTypeOut}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3 text-right tabular-nums text-gray-800">{fmtNumber(tx.txQuantityDecimal)}</td>
-                    <td className="px-6 py-3 text-right tabular-nums text-gray-800">{fmtNumber(tx.txAmountDecimal)}</td>
-                    <td className="px-6 py-3 text-right tabular-nums text-gray-500">{fmtNumber(tx.previousAveragePriceDecimal)}</td>
-                    <td className="px-6 py-3 text-right tabular-nums text-gray-600">{fmtNumber(tx.currentAveragePriceDecimal)}</td>
-                    <td className="px-6 py-3 text-right tabular-nums text-gray-500">{fmtNumber(tx.previousBalanceQuantityDecimal)}</td>
-                    <td className="px-6 py-3 text-right tabular-nums font-semibold text-gray-900">{fmtNumber(tx.currentBalanceQuantityDecimal)}</td>
-                    <td className="px-6 py-3 text-right tabular-nums text-gray-500">{fmtNumber(tx.previousBalanceDecimal)}</td>
-                    <td className="px-6 py-3 text-right tabular-nums font-semibold text-gray-900">{fmtNumber(tx.currentBalanceDecimal)}</td>
-                    <td className="px-6 py-3 text-gray-500 max-w-[16rem] truncate">{tx.description || '—'}</td>
-                  </tr>
-                ))}
+                {pagedTxs.map((tx, idx) => {
+                  const isHighlighted = highlightedId === tx.id
+                  const docHref = getDocHref(tx)
+                  const txCell = clsx('px-6 py-3 text-right tabular-nums', !isHighlighted && 'bg-slate-100/80')
+                  const beginCell = clsx('px-6 py-3 text-right tabular-nums', !isHighlighted && 'bg-amber-100/80')
+                  const endCell = clsx('px-6 py-3 text-right tabular-nums', !isHighlighted && 'bg-sky-100/80')
+                  return (
+                    <tr
+                      key={tx.id}
+                      onClick={() => selectRow(tx.id)}
+                      className={clsx(
+                        'border-l-[3px] border-b border-gray-50 cursor-pointer transition-colors',
+                        isHighlighted
+                          ? '!bg-primary-100 border-l-primary-500'
+                          : clsx('border-l-transparent', idx % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-50/40 hover:bg-gray-100/50')
+                      )}
+                    >
+                      <td className="px-6 py-3 text-gray-600 whitespace-nowrap">{fmtDate(tx.createdDate)}</td>
+                      <td className="px-6 py-3 font-medium whitespace-nowrap" title={tx.description || undefined}>
+                        {docHref ? (
+                          <a
+                            href={docHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            className="text-primary-600 hover:underline"
+                          >
+                            {tx.tags2 || '—'}
+                          </a>
+                        ) : (
+                          <span className="text-gray-800">{tx.tags2 || '—'}</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-3">
+                        <span className={clsx(
+                          'px-2 py-0.5 text-[10px] font-bold rounded-full ring-1',
+                          tx.txType === 1 ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-red-50 text-red-600 ring-red-200'
+                        )}>
+                          {tx.txType === 1 ? it.txTypeIn : it.txTypeOut}
+                        </span>
+                      </td>
+                      <td className={clsx(txCell, 'text-gray-800')}>{fmtNumber(tx.txQuantityDecimal)}</td>
+                      <td className={clsx(txCell, 'text-gray-600')}>{fmtNumber(tx.txAveragePriceDecimal)}</td>
+                      <td className={clsx(txCell, 'text-gray-800')}>{fmtNumber(tx.txAmountDecimal)}</td>
+                      <td className={clsx(beginCell, 'text-gray-500')}>{fmtNumber(tx.previousBalanceQuantityDecimal)}</td>
+                      <td className={clsx(beginCell, 'text-gray-500')}>{fmtNumber(tx.previousAveragePriceDecimal)}</td>
+                      <td className={clsx(beginCell, 'text-gray-500')}>{fmtNumber(tx.previousBalanceDecimal)}</td>
+                      <td className={clsx(endCell, 'font-semibold text-gray-900')}>{fmtNumber(tx.currentBalanceQuantityDecimal)}</td>
+                      <td className={clsx(endCell, 'text-gray-600')}>{fmtNumber(tx.currentAveragePriceDecimal)}</td>
+                      <td className={clsx(endCell, 'font-semibold text-gray-900')}>{fmtNumber(tx.currentBalanceDecimal)}</td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           )}
