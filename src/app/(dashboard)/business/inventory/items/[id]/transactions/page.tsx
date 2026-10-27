@@ -3,13 +3,12 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { toast } from 'sonner'
-import { ChevronLeft, ChevronRight as ChevronRightIcon, History } from 'lucide-react'
+import { ChevronLeft, ChevronRight as ChevronRightIcon, History, Search } from 'lucide-react'
 import clsx from 'clsx'
 import { useLang } from '@/context/LanguageContext'
 import { inventoryItemApi, type InventoryItemItem } from '@/lib/api/inventory-item.api'
 import { inventoryLocationApi, type InventoryLocationItem } from '@/lib/api/inventory-location.api'
 import { pointApi, type InventoryWallet } from '@/lib/api/point.api'
-import PointTxHistoryModal from '@/components/PointTxHistoryModal'
 
 const listPath = '/business/inventory/items'
 
@@ -24,15 +23,26 @@ export default function ItemLocationTransactionsPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
   const itemId = params.id ?? ''
+  const ssKey = `inventory_item_tx_balance_highlight_${itemId}`
 
   const [item, setItem] = useState<InventoryItemItem | null>(null)
   const [wallets, setWallets] = useState<InventoryWallet[]>([])
   const [locations, setLocations] = useState<InventoryLocationItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [historyFor, setHistoryFor] = useState<InventoryLocationItem | null>(null)
-  const [highlightedId, setHighlightedId] = useState<string | null>(null)
+  const [highlightedId, setHighlightedId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') return sessionStorage.getItem(ssKey)
+    return null
+  })
   const [page, setPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(25)
+  const [searchTerm, setSearchTerm] = useState('')
+
+  function selectRow(id: string) {
+    const next = highlightedId === id ? null : id
+    setHighlightedId(next)
+    if (next) sessionStorage.setItem(ssKey, next)
+    else sessionStorage.removeItem(ssKey)
+  }
 
   useEffect(() => {
     if (!itemId) return
@@ -58,11 +68,20 @@ export default function ItemLocationTransactionsPage() {
   }, [itemId, it.loadFailed])
 
   const locationById = new Map(locations.map(l => [l.id, l]))
-  const total = wallets.length
+
+  const filteredWallets = searchTerm
+    ? wallets.filter(w => {
+        const loc = w.inventoryLocationId ? locationById.get(w.inventoryLocationId) : undefined
+        const q = searchTerm.toLowerCase()
+        return (loc?.code ?? '').toLowerCase().includes(q) || (loc?.name ?? '').toLowerCase().includes(q)
+      })
+    : wallets
+
+  const total = filteredWallets.length
   const totalPages = Math.max(1, Math.ceil(total / itemsPerPage))
   const startRow = total === 0 ? 0 : (page - 1) * itemsPerPage + 1
   const endRow = Math.min(page * itemsPerPage, total)
-  const pagedWallets = wallets.slice((page - 1) * itemsPerPage, page * itemsPerPage)
+  const pagedWallets = filteredWallets.slice((page - 1) * itemsPerPage, page * itemsPerPage)
 
   if (loading) {
     return (
@@ -83,6 +102,21 @@ export default function ItemLocationTransactionsPage() {
           <p className="text-base text-gray-500 mt-0.5">
             {it.byItemSubtitle}{item ? ` — ${item.code} ${item.nameTh || ''}` : ''}
           </p>
+        </div>
+      </div>
+
+      <div className="flex-none flex items-center mb-4">
+        <div className="flex items-center gap-2 flex-1 min-w-56 max-w-xs bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-sm">
+          <Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
+          <input
+            value={searchTerm}
+            onChange={e => { setSearchTerm(e.target.value); setPage(1) }}
+            placeholder={it.balanceSearchByLocationPlaceholder}
+            className="flex-1 text-sm bg-transparent outline-none text-gray-700 placeholder-gray-400"
+          />
+          {searchTerm && (
+            <button onClick={() => { setSearchTerm(''); setPage(1) }} className="text-gray-400 hover:text-gray-600">✕</button>
+          )}
         </div>
       </div>
 
@@ -108,7 +142,7 @@ export default function ItemLocationTransactionsPage() {
               return (
                 <tr
                   key={w.id}
-                  onClick={() => setHighlightedId(prev => prev === w.id ? null : w.id)}
+                  onClick={() => selectRow(w.id)}
                   className={clsx(
                     'border-l-[3px] border-b border-gray-50 cursor-pointer transition-colors',
                     highlighted
@@ -123,7 +157,7 @@ export default function ItemLocationTransactionsPage() {
                   <td className="px-6 py-3 text-right tabular-nums font-semibold text-gray-900">{fmtNumber(w.pointBalanceDecimal)}</td>
                   <td className="px-6 py-3 text-right" onClick={e => e.stopPropagation()}>
                     <button
-                      onClick={() => loc && setHistoryFor(loc)}
+                      onClick={() => loc && router.push(`/business/inventory/transactions/${loc.id}/${itemId}`)}
                       disabled={!loc}
                       className="inline-flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-800 disabled:opacity-40 disabled:cursor-not-allowed"
                     >
@@ -162,15 +196,6 @@ export default function ItemLocationTransactionsPage() {
         </div>
       </div>
       </div>
-
-      {historyFor && item && (
-        <PointTxHistoryModal
-          locationId={historyFor.id}
-          itemId={item.id}
-          label={`${historyFor.code} · ${item.code} ${item.nameTh || ''}`}
-          onClose={() => setHistoryFor(null)}
-        />
-      )}
     </div>
   )
 }

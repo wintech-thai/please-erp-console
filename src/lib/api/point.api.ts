@@ -41,6 +41,8 @@ export interface InventoryPointTx {
 export interface GetPointTxsPayload {
   offset?: number
   limit?: number
+  fromDate?: string
+  toDate?: string
 }
 
 export const pointApi = {

@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { toast } from 'sonner'
-import { Search, Plus, Trash2, Database, ChevronLeft, ChevronRight as ChevronRightIcon, MoreHorizontal } from 'lucide-react'
+import { Search, Plus, Trash2, Database, ChevronLeft, ChevronRight as ChevronRightIcon, MoreHorizontal, History } from 'lucide-react'
 import clsx from 'clsx'
 import { useLang } from '@/context/LanguageContext'
 import { inventoryItemApi, type InventoryItemItem } from '@/lib/api/inventory-item.api'
@@ -66,6 +66,21 @@ function InventoryItemContent() {
   })
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; id?: string; name?: string }>({ open: false })
   const [deleting, setDeleting] = useState(false)
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [menuDirection, setMenuDirection] = useState<'up' | 'down'>('down')
+  const menuRef = useRef<HTMLTableCellElement>(null)
+
+  function toggleMenu(id: string, e: React.MouseEvent<HTMLButtonElement>) {
+    if (openMenuId === id) { setOpenMenuId(null); return }
+    const rect = e.currentTarget.getBoundingClientRect()
+    const estimatedMenuHeight = 52 // ~1 item; grows as more menu items get added later
+    // เช็คกับขอบล่างของ scroll container (overflow-auto) ที่ครอบตารางอยู่ ไม่ใช่ขอบจอ
+    // เพราะ dropdown โดน clip โดย container นี้ก่อนจะโดน clip โดยขอบจอจริงๆ
+    const container = e.currentTarget.closest('.overflow-auto')
+    const limit = container ? container.getBoundingClientRect().bottom : window.innerHeight
+    setMenuDirection(rect.bottom + estimatedMenuHeight > Math.min(limit, window.innerHeight) ? 'up' : 'down')
+    setOpenMenuId(id)
+  }
 
   const fetchItems = useCallback(async (search = searchTerm, type = typeFilter, p = page, perPage = itemsPerPage) => {
     setLoading(true)
@@ -83,6 +98,13 @@ function InventoryItemContent() {
   useEffect(() => {
     fetchItems()
   }, [page, itemsPerPage])
+
+  useEffect(() => {
+    if (!openMenuId) return
+    const handler = (e: MouseEvent) => { if (!menuRef.current?.contains(e.target as Node)) setOpenMenuId(null) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [openMenuId])
 
   useEffect(() => {
     if (!highlightIdParam) return
@@ -244,14 +266,33 @@ function InventoryItemContent() {
                     <td className="px-6 py-4 text-gray-600">{item.unit || '—'}</td>
                     <td className="px-6 py-4 text-gray-600">{item.itemGroup || '—'}</td>
                     <td className="px-6 py-4 text-gray-600">{typeLabel || '—'}</td>
-                    <td className="px-4 py-4 text-center" onClick={e => e.stopPropagation()}>
+                    <td
+                      className="px-4 py-4 text-center relative"
+                      onClick={e => e.stopPropagation()}
+                      ref={openMenuId === item.id ? menuRef : undefined}
+                    >
                       <button
-                        onClick={() => router.push(`/business/inventory/items/${item.id}/transactions`)}
-                        title={t.itemTransaction.actionLabel}
+                        onClick={e => toggleMenu(item.id, e)}
                         className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors"
                       >
                         <MoreHorizontal className="w-4 h-4" />
                       </button>
+                      {openMenuId === item.id && (
+                        <div
+                          className={clsx(
+                            'absolute right-4 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-50 text-left',
+                            menuDirection === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'
+                          )}
+                        >
+                          <button
+                            onClick={() => { setOpenMenuId(null); router.push(`/business/inventory/items/${item.id}/transactions`) }}
+                            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors whitespace-nowrap"
+                          >
+                            <History className="w-3.5 h-3.5 flex-none" />
+                            {t.itemTransaction.actionLabel}
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 )
