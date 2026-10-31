@@ -98,6 +98,32 @@ export default function InventoryOverviewSection() {
   const [wallets, setWallets] = useState<InventoryWallet[]>([])
   const [activity, setActivity] = useState({ stockIn: 0, stockOut: 0, transfer: 0, pending: 0 })
   const [activityLoading, setActivityLoading] = useState(true)
+  const [highlightedItemId, setHighlightedItemId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') return sessionStorage.getItem('inventory_overview_lowstock_highlight')
+    return null
+  })
+  const [highlightedLocationId, setHighlightedLocationId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') return sessionStorage.getItem('inventory_overview_toplocation_highlight')
+    return null
+  })
+
+  function selectItemRow(id: string) {
+    setHighlightedItemId(prev => {
+      const next = prev === id ? null : id
+      if (next) sessionStorage.setItem('inventory_overview_lowstock_highlight', next)
+      else sessionStorage.removeItem('inventory_overview_lowstock_highlight')
+      return next
+    })
+  }
+
+  function selectLocationRow(id: string) {
+    setHighlightedLocationId(prev => {
+      const next = prev === id ? null : id
+      if (next) sessionStorage.setItem('inventory_overview_toplocation_highlight', next)
+      else sessionStorage.removeItem('inventory_overview_toplocation_highlight')
+      return next
+    })
+  }
 
   useEffect(() => {
     // รอ TenantContext resolve org จริงก่อน (login ใหม่ orgId จะเป็น 'global' ชั่วคราว
@@ -208,25 +234,39 @@ export default function InventoryOverviewSection() {
             ) : (
               <table className="min-w-full text-sm">
                 <tbody>
-                  {lowStockItems.map(({ item, qty }) => (
-                    <tr
-                      key={item.id}
-                      className="group border-b border-gray-50 hover:bg-amber-50/60 cursor-pointer transition-colors"
-                      onClick={() => router.push(`/business/inventory/items/${item.id}/transactions`)}
-                    >
-                      <td className="px-6 py-2.5">
-                        <p className="font-medium text-gray-800 group-hover:text-primary-700">{item.code}</p>
-                        <p className="text-xs text-gray-400">{item.nameTh}</p>
-                      </td>
-                      <td className="px-4 py-2.5 text-right whitespace-nowrap">
-                        <span className="font-semibold text-red-600 tabular-nums">{fmtNumber(qty)}</span>
-                        <span className="text-xs text-gray-400"> / {fmtNumber(item.minimumQuantity)}</span>
-                      </td>
-                      <td className="pr-4 py-2.5 w-6">
-                        <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-primary-500 transition-colors" />
-                      </td>
-                    </tr>
-                  ))}
+                  {lowStockItems.map(({ item, qty }) => {
+                    const highlighted = highlightedItemId === item.id
+                    return (
+                      <tr
+                        key={item.id}
+                        className={clsx(
+                          'border-l-[3px] border-b border-gray-50 cursor-pointer transition-colors',
+                          highlighted ? '!bg-primary-100 border-l-primary-500' : 'border-l-transparent hover:bg-gray-50'
+                        )}
+                        onClick={() => selectItemRow(item.id)}
+                      >
+                        <td className="px-6 py-2.5">
+                          <p className="font-medium text-gray-800">{item.code}</p>
+                          <p className="text-xs text-gray-400">{item.nameTh}</p>
+                        </td>
+                        <td className="px-4 py-2.5 text-right whitespace-nowrap" onClick={e => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => router.push(`/business/inventory/items/${item.id}/transactions`)}
+                            className="hover:underline"
+                          >
+                            <span className="font-semibold text-red-600 tabular-nums hover:text-red-700">{fmtNumber(qty)}</span>
+                            <span className="text-xs text-gray-400"> / {fmtNumber(item.minimumQuantity)}</span>
+                          </button>
+                        </td>
+                        <td className="pr-4 py-2.5 w-6" onClick={e => e.stopPropagation()}>
+                          <button type="button" onClick={() => router.push(`/business/inventory/items/${item.id}/transactions`)}>
+                            <ChevronRight className="w-4 h-4 text-gray-300 hover:text-primary-500 transition-colors" />
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             )}
@@ -243,24 +283,42 @@ export default function InventoryOverviewSection() {
               <div className="py-6 text-center"><div className="w-6 h-6 mx-auto rounded-full border-2 border-primary-500 border-t-transparent animate-spin" /></div>
             ) : valueByLocation.length === 0 ? (
               <p className="text-sm text-gray-400 text-center py-4">{ov.topLocationsEmpty}</p>
-            ) : valueByLocation.map(({ location, value }) => (
-              <div
-                key={location.id}
-                className="group flex items-center gap-2 -mx-2 px-2 py-1 rounded-lg cursor-pointer hover:bg-primary-50/60 transition-colors"
-                onClick={() => router.push(`/business/inventory/locations/${location.id}/transactions`)}
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="font-medium text-gray-700 truncate group-hover:text-primary-700">{location.name || location.code}</span>
-                    <span className="text-gray-500 tabular-nums group-hover:text-primary-600 group-hover:underline">{fmtNumber(value)}</span>
+            ) : valueByLocation.map(({ location, value }) => {
+              const highlighted = highlightedLocationId === location.id
+              return (
+                <div
+                  key={location.id}
+                  className={clsx(
+                    'flex items-center gap-2 -mx-2 pl-[9px] pr-2 py-1 border-l-[3px] rounded-lg cursor-pointer transition-colors',
+                    highlighted ? '!bg-primary-100 border-l-primary-500' : 'border-l-transparent hover:bg-gray-50'
+                  )}
+                  onClick={() => selectLocationRow(location.id)}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className="font-medium text-gray-700 truncate">{location.name || location.code}</span>
+                      <button
+                        type="button"
+                        onClick={e => { e.stopPropagation(); router.push(`/business/inventory/locations/${location.id}/transactions`) }}
+                        className="text-gray-500 tabular-nums hover:text-primary-600 hover:underline"
+                      >
+                        {fmtNumber(value)}
+                      </button>
+                    </div>
+                    <div className="h-1.5 bg-primary-100 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full bg-gradient-to-r from-primary-400 to-primary-600" style={{ width: `${(value / maxLocationValue) * 100}%` }} />
+                    </div>
                   </div>
-                  <div className="h-1.5 bg-primary-100 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full bg-gradient-to-r from-primary-400 to-primary-600" style={{ width: `${(value / maxLocationValue) * 100}%` }} />
-                  </div>
+                  <button
+                    type="button"
+                    onClick={e => { e.stopPropagation(); router.push(`/business/inventory/locations/${location.id}/transactions`) }}
+                    className="flex-none"
+                  >
+                    <ChevronRight className="w-4 h-4 text-gray-300 hover:text-primary-500 transition-colors" />
+                  </button>
                 </div>
-                <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-primary-500 transition-colors flex-none" />
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </div>
