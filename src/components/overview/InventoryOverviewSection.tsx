@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Database, Boxes, Coins, AlertTriangle, PackagePlus, PackageMinus, ArrowLeftRight, Clock } from 'lucide-react'
+import { Database, Boxes, Coins, AlertTriangle, PackagePlus, PackageMinus, ArrowLeftRight, Clock, ChevronRight } from 'lucide-react'
 import clsx from 'clsx'
 import { useLang } from '@/context/LanguageContext'
 import { useTenant } from '@/context/TenantContext'
@@ -211,16 +211,19 @@ export default function InventoryOverviewSection() {
                   {lowStockItems.map(({ item, qty }) => (
                     <tr
                       key={item.id}
-                      className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer"
+                      className="group border-b border-gray-50 hover:bg-amber-50/60 cursor-pointer transition-colors"
                       onClick={() => router.push(`/business/inventory/items/${item.id}/transactions`)}
                     >
                       <td className="px-6 py-2.5">
-                        <p className="font-medium text-gray-800">{item.code}</p>
+                        <p className="font-medium text-gray-800 group-hover:text-primary-700">{item.code}</p>
                         <p className="text-xs text-gray-400">{item.nameTh}</p>
                       </td>
-                      <td className="px-6 py-2.5 text-right whitespace-nowrap">
+                      <td className="px-4 py-2.5 text-right whitespace-nowrap">
                         <span className="font-semibold text-red-600 tabular-nums">{fmtNumber(qty)}</span>
                         <span className="text-xs text-gray-400"> / {fmtNumber(item.minimumQuantity)}</span>
+                      </td>
+                      <td className="pr-4 py-2.5 w-6">
+                        <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-primary-500 transition-colors" />
                       </td>
                     </tr>
                   ))}
@@ -241,14 +244,21 @@ export default function InventoryOverviewSection() {
             ) : valueByLocation.length === 0 ? (
               <p className="text-sm text-gray-400 text-center py-4">{ov.topLocationsEmpty}</p>
             ) : valueByLocation.map(({ location, value }) => (
-              <div key={location.id} className="cursor-pointer" onClick={() => router.push(`/business/inventory/locations/${location.id}/transactions`)}>
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="font-medium text-gray-700 truncate">{location.name || location.code}</span>
-                  <span className="text-gray-500 tabular-nums">{fmtNumber(value)}</span>
+              <div
+                key={location.id}
+                className="group flex items-center gap-2 -mx-2 px-2 py-1 rounded-lg cursor-pointer hover:bg-primary-50/60 transition-colors"
+                onClick={() => router.push(`/business/inventory/locations/${location.id}/transactions`)}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="font-medium text-gray-700 truncate group-hover:text-primary-700">{location.name || location.code}</span>
+                    <span className="text-gray-500 tabular-nums group-hover:text-primary-600 group-hover:underline">{fmtNumber(value)}</span>
+                  </div>
+                  <div className="h-1.5 bg-primary-100 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full bg-gradient-to-r from-primary-400 to-primary-600" style={{ width: `${(value / maxLocationValue) * 100}%` }} />
+                  </div>
                 </div>
-                <div className="h-1.5 bg-primary-100 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full bg-gradient-to-r from-primary-400 to-primary-600" style={{ width: `${(value / maxLocationValue) * 100}%` }} />
-                </div>
+                <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-primary-500 transition-colors flex-none" />
               </div>
             ))}
           </div>

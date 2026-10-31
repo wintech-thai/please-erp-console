@@ -357,6 +357,7 @@ export default function StockInForm({ mode, inventoryDocId }: Props) {
                 docNoLabel={si.fieldDocumentNo}
                 dateLabel={si.fieldDocumentDate}
                 hint={si.documentNoPreviewHint}
+                previewTag={si.documentNoPreviewTag}
               />
             </div>
           </div>

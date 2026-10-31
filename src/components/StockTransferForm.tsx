@@ -406,6 +406,7 @@ export default function StockTransferForm({ mode, inventoryDocId }: Props) {
                 docNoLabel={st.fieldDocumentNo}
                 dateLabel={st.fieldDocumentDate}
                 hint={st.documentNoPreviewHint}
+                previewTag={st.documentNoPreviewTag}
               />
             </div>
           </div>

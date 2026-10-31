@@ -384,6 +384,7 @@ export default function StockOutForm({ mode, inventoryDocId }: Props) {
                 docNoLabel={so.fieldDocumentNo}
                 dateLabel={so.fieldDocumentDate}
                 hint={so.documentNoPreviewHint}
+                previewTag={so.documentNoPreviewTag}
               />
             </div>
           </div>
