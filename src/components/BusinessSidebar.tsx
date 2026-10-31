@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { useState, Suspense } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import clsx from 'clsx'
 import { useLang } from '@/context/LanguageContext'
 
@@ -146,19 +146,20 @@ function MasterDataSubNav({ collapsed }: { collapsed: boolean }) {
   const pathname = usePathname()
   const typeFromPath = MASTER_DATA_REFS.find(({ refType }) => pathname.includes(`/master-data/${refType}`))?.refType
   const typeParam = typeFromPath ?? searchParams.get('type') ?? 'LocationType'
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
-    () => Object.fromEntries(MASTER_DATA_GROUPS.map(g => [g.groupKey, true]))
-  )
+  const activeGroupKey = MASTER_DATA_GROUPS.find(g => g.items.some(i => i.refType === typeParam))?.groupKey ?? MASTER_DATA_GROUPS[0].groupKey
+  // x013 ข้อ 7 : เปิดได้ทีละกลุ่มเท่านั้น (accordion) ไม่งั้นพอมี ref type กลุ่มอื่นเพิ่มขึ้นในอนาคต nav จะยาวเกินไป
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(activeGroupKey)
+  useEffect(() => { setExpandedGroup(activeGroupKey) }, [activeGroupKey])
 
   return (
     <div className="flex flex-col gap-0.5 px-2">
       {MASTER_DATA_GROUPS.map(group => {
-        const expanded = expandedGroups[group.groupKey]
+        const expanded = expandedGroup === group.groupKey
         return (
           <div key={group.groupKey}>
             {/* Group header — clickable */}
             <button
-              onClick={() => setExpandedGroups(prev => ({ ...prev, [group.groupKey]: !prev[group.groupKey] }))}
+              onClick={() => setExpandedGroup(prev => prev === group.groupKey ? null : group.groupKey)}
               className={clsx(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-sm font-medium transition-colors',
                 collapsed ? 'justify-center px-2' : '',

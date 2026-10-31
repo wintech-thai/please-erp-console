@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback } from 'react'
 import { Clock, ChevronDown, Check } from 'lucide-react'
 import clsx from 'clsx'
 import { useLang } from '@/context/LanguageContext'
@@ -74,6 +74,7 @@ export function AdvancedTimeRangeSelector({ value, onChange, disabled, className
   const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 })
   const ref = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
 
   // ── sync tab เมื่อ value prop เปลี่ยนจากภายนอก (เช่น reset) ────────────────
   useEffect(() => {
@@ -81,9 +82,17 @@ export function AdvancedTimeRangeSelector({ value, onChange, disabled, className
   }, [value.type])
 
   const calcPos = useCallback(() => {
-    if (buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect()
-      setDropdownPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right })
+    if (!buttonRef.current) return
+    const rect = buttonRef.current.getBoundingClientRect()
+    const right = window.innerWidth - rect.right
+    const panelHeight = panelRef.current?.offsetHeight
+    if (panelHeight) {
+      const margin = 16
+      const fitsBelow = rect.bottom + 8 + panelHeight <= window.innerHeight - margin
+      const top = fitsBelow ? rect.bottom + 8 : Math.max(margin, rect.top - 8 - panelHeight)
+      setDropdownPos({ top, right })
+    } else {
+      setDropdownPos({ top: rect.bottom + 8, right })
     }
   }, [])
 
@@ -103,6 +112,12 @@ export function AdvancedTimeRangeSelector({ value, onChange, disabled, className
       window.removeEventListener('resize', calcPos)
       window.removeEventListener('scroll', calcPos, true)
     }
+  }, [isOpen, calcPos])
+
+  // ── กันไม่ให้ panel ล้นขอบล่างจอ — วัดความสูงจริงหลัง mount แล้วเปิดขึ้นด้านบนแทนถ้าพื้นที่ไม่พอ ──
+  useLayoutEffect(() => {
+    if (!isOpen) return
+    calcPos()
   }, [isOpen, calcPos])
 
   useEffect(() => {
@@ -168,6 +183,7 @@ export function AdvancedTimeRangeSelector({ value, onChange, disabled, className
 
       {isOpen && (
         <div
+          ref={panelRef}
           className="fixed z-[200] bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden w-[calc(100vw-2rem)] sm:w-[560px]"
           style={{ top: dropdownPos.top, right: dropdownPos.right }}
         >

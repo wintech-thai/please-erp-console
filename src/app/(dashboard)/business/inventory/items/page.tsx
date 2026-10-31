@@ -7,9 +7,21 @@ import { Search, Plus, Trash2, Database, ChevronLeft, ChevronRight as ChevronRig
 import clsx from 'clsx'
 import { useLang } from '@/context/LanguageContext'
 import { inventoryItemApi, type InventoryItemItem } from '@/lib/api/inventory-item.api'
+import { pointApi } from '@/lib/api/point.api'
 import { useMasterRefOptions } from '@/hooks/useMasterRefOptions'
 
 const SS_KEY = 'inventory_item_highlight'
+// cache จำนวน location ต่อ item ข้ามการ navigate ไป-กลับหน้านี้ (ผ่าน sessionStorage กันหาย
+// แม้ full reload) กันไม่ให้ column โชว์ "-" วูบก่อนแสดงเลขทุกครั้ง
+const LOCATION_COUNT_CACHE_KEY = 'inventory_item_location_count_cache'
+function loadLocationCountCache(): Record<string, number> {
+  if (typeof window === 'undefined') return {}
+  try { return JSON.parse(sessionStorage.getItem(LOCATION_COUNT_CACHE_KEY) || '{}') } catch { return {} }
+}
+const locationCountCache = loadLocationCountCache()
+function saveLocationCountCache() {
+  try { sessionStorage.setItem(LOCATION_COUNT_CACHE_KEY, JSON.stringify(locationCountCache)) } catch {}
+}
 
 function DeleteModal({ name, onConfirm, onCancel, deleting }: {
   name?: string; onConfirm: () => void; onCancel: () => void; deleting: boolean
@@ -69,6 +81,7 @@ function InventoryItemContent() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [menuDirection, setMenuDirection] = useState<'up' | 'down'>('down')
   const menuRef = useRef<HTMLTableCellElement>(null)
+  const [locationCounts, setLocationCounts] = useState<Record<string, number | null>>({})
 
   function toggleMenu(id: string, e: React.MouseEvent<HTMLButtonElement>) {
     if (openMenuId === id) { setOpenMenuId(null); return }
@@ -98,6 +111,32 @@ function InventoryItemContent() {
   useEffect(() => {
     fetchItems()
   }, [page, itemsPerPage])
+
+  // จำนวน location ต่อ item ต้องนับจำนวน wallet แยกราย item เพราะ GetInventoryItems ไม่ได้ join มาให้
+  useEffect(() => {
+    if (items.length === 0) { setLocationCounts({}); return }
+    // โชว์ค่าจาก cache ทันทีก่อน (ถ้าเคยโหลดไปแล้ว) ไม่ต้องรอ fetch ใหม่เสร็จ
+    setLocationCounts(prev => {
+      const seeded = { ...prev }
+      items.forEach(item => {
+        if (item.id in locationCountCache) seeded[item.id] = locationCountCache[item.id]
+      })
+      return seeded
+    })
+    let cancelled = false
+    Promise.allSettled(items.map(item => pointApi.getWalletsByItemId(item.id))).then(results => {
+      if (cancelled) return
+      const next: Record<string, number | null> = {}
+      results.forEach((r, idx) => {
+        const count = r.status === 'fulfilled' && Array.isArray(r.value.data) ? r.value.data.length : null
+        next[items[idx].id] = count
+        if (count != null) locationCountCache[items[idx].id] = count
+      })
+      saveLocationCountCache()
+      setLocationCounts(prev => ({ ...prev, ...next }))
+    })
+    return () => { cancelled = true }
+  }, [items])
 
   useEffect(() => {
     if (!openMenuId) return
@@ -212,19 +251,20 @@ function InventoryItemContent() {
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{ii.colUnit}</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{ii.colGroup}</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{ii.colType}</th>
+                <th className="px-6 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{ii.colLocationCount}</th>
                 <th className="w-28 px-4 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{ii.colAction}</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} className="py-16 text-center">
+                <tr><td colSpan={8} className="py-16 text-center">
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-7 h-7 rounded-full border-2 border-primary-500 border-t-transparent animate-spin" />
                     <span className="text-sm text-gray-400">{t.admin.loading}</span>
                   </div>
                 </td></tr>
               ) : items.length === 0 ? (
-                <tr><td colSpan={7} className="py-16 text-center">
+                <tr><td colSpan={8} className="py-16 text-center">
                   <Database className="w-7 h-7 mx-auto mb-2 text-gray-300" />
                   <p className="text-sm text-gray-400">{ii.noData}</p>
                 </td></tr>
@@ -266,6 +306,14 @@ function InventoryItemContent() {
                     <td className="px-6 py-4 text-gray-600">{item.unit || '—'}</td>
                     <td className="px-6 py-4 text-gray-600">{item.itemGroup || '—'}</td>
                     <td className="px-6 py-4 text-gray-600">{typeLabel || '—'}</td>
+                    <td className="px-6 py-4 text-center" onClick={e => e.stopPropagation()}>
+                      <button
+                        onClick={() => router.push(`/business/inventory/items/${item.id}/transactions`)}
+                        className="inline-flex items-center justify-center min-w-[1.75rem] px-2 py-0.5 text-sm font-semibold text-primary-600 hover:text-primary-800 hover:underline underline-offset-2 rounded transition-colors"
+                      >
+                        {locationCounts[item.id] ?? '—'}
+                      </button>
+                    </td>
                     <td
                       className="px-4 py-4 text-center relative"
                       onClick={e => e.stopPropagation()}

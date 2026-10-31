@@ -63,6 +63,9 @@ export const documentNumberApi = {
   getDocumentNumber: (docType: string) =>
     client.get<{ documentNumber: string }>(`${getBase()}/GetDocumentNumber/${docType}`),
 
+  getNextDocumentNumber: (docType: string) =>
+    client.get<{ documentNumber: string }>(`${getBase()}/GetNextDocumentNumber/${docType}`),
+
   updateSequence: (configId: string, payload: UpdateDocumentNumberSequencePayload) =>
     client.post<DocumentNumberConfig>(`${getBase()}/UpdateDocumentNumberSequence/${configId}`, payload),
 }

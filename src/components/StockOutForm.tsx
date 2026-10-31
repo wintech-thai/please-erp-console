@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { AxiosError } from 'axios'
-import { ChevronLeft, Plus, Pencil, Trash2, PackageMinus, MapPin, ListChecks, FileJson } from 'lucide-react'
+import { ChevronLeft, Plus, Pencil, Trash2, PackageMinus, MapPin, ListChecks, FileJson, History } from 'lucide-react'
 import clsx from 'clsx'
 import { useLang } from '@/context/LanguageContext'
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges'
@@ -12,9 +12,14 @@ import { useMasterRefOptions } from '@/hooks/useMasterRefOptions'
 import LeaveConfirmModal from '@/components/LeaveConfirmModal'
 import SearchableSelect from '@/components/SearchableSelect'
 import JsonViewerModal from '@/components/JsonViewerModal'
+import DocNumberPreview from '@/components/DocNumberPreview'
+import ItemImageButton from '@/components/ItemImageButton'
+import ItemAuditTrailButton from '@/components/ItemAuditTrailButton'
+import AuditTrailDrawer from '@/components/AuditTrailDrawer'
 import { inventoryLocationApi, type InventoryLocationItem } from '@/lib/api/inventory-location.api'
 import { inventoryItemApi, type InventoryItemItem } from '@/lib/api/inventory-item.api'
 import { inventoryDocApi, type InventoryDocItemRow, type InventoryDocItem } from '@/lib/api/inventory-doc.api'
+import { pointApi } from '@/lib/api/point.api'
 
 type LocalItem = InventoryDocItemRow & { localKey: string }
 
@@ -40,10 +45,11 @@ function DocStatusBadge({ status, label }: { status?: string | null; label: stri
 // Unlike Stock-In, unit price/total are never entered here — the server fills
 // them in from the item's live stock cost at approve time (per spec).
 
-function ItemModal({ initial, itemOptions, projectOptions, onSave, onClose }: {
+function ItemModal({ initial, itemOptions, projectOptions, locationId, onSave, onClose }: {
   initial: LocalItem | null
   itemOptions: InventoryItemItem[]
   projectOptions: { code: string; description: string }[]
+  locationId: string
   onSave: (item: LocalItem) => void
   onClose: () => void
 }) {
@@ -54,6 +60,26 @@ function ItemModal({ initial, itemOptions, projectOptions, onSave, onClose }: {
   const [quantity, setQuantity] = useState(initial?.itemQuantity?.toString() || '')
   const [lotId, setLotId] = useState(initial?.lotId || '')
   const [project, setProject] = useState(initial?.project || '')
+
+  // x013 ข้อ 6 : ดึง unit price ปัจจุบันของ item ที่ location นี้มาแสดงเป็นแนวทางเฉยๆ — ราคาจริงคำนวณตอน approve
+  const [priceGuideMap, setPriceGuideMap] = useState<Record<string, number | undefined>>({})
+
+  useEffect(() => {
+    if (!locationId) { setPriceGuideMap({}); return }
+    let cancelled = false
+    pointApi.getWalletsByLocationId(locationId).then(res => {
+      if (cancelled) return
+      const map: Record<string, number | undefined> = {}
+      if (Array.isArray(res.data)) {
+        res.data.forEach(w => { if (w.inventoryItemId) map[w.inventoryItemId] = w.pointAveragePriceDecimal ?? undefined })
+      }
+      setPriceGuideMap(map)
+    }).catch(() => { if (!cancelled) setPriceGuideMap({}) })
+    return () => { cancelled = true }
+  }, [locationId])
+
+  const suggestedPrice = itemId ? priceGuideMap[itemId] : undefined
+  const suggestedTotal = suggestedPrice != null ? (parseFloat(quantity) || 0) * suggestedPrice : undefined
 
   const itemSelectOptions = useMemo(
     () => itemOptions.map(i => ({ code: i.id, label: i.code, sublabel: i.nameTh })),
@@ -102,11 +128,22 @@ function ItemModal({ initial, itemOptions, projectOptions, onSave, onClose }: {
               <input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} className={inputCls} min={0} step="any" />
             </FormField>
             <FormField label={so.itemFieldUnitPrice}>
-              <input type="text" value={so.priceCalcNotice} readOnly className={clsx(inputCls, 'bg-gray-50 text-gray-400 italic')} />
+              <input
+                type="text"
+                value={suggestedPrice != null ? fmtNumber(suggestedPrice) : so.priceCalcNotice}
+                readOnly
+                className={clsx(inputCls, suggestedPrice != null ? 'bg-gray-50 text-gray-600' : 'bg-gray-50 text-gray-400 italic')}
+              />
             </FormField>
           </div>
           <FormField label={so.itemFieldTotalAmount}>
-            <input type="text" value={so.priceCalcNotice} readOnly className={clsx(inputCls, 'bg-gray-50 text-gray-400 italic')} />
+            <input
+              type="text"
+              value={suggestedTotal != null ? fmtNumber(suggestedTotal) : so.priceCalcNotice}
+              readOnly
+              className={clsx(inputCls, suggestedTotal != null ? 'bg-gray-50 text-gray-600' : 'bg-gray-50 text-gray-400 italic')}
+            />
+            {suggestedPrice != null && <p className="text-xs text-gray-400 mt-1">{so.priceGuideHint}</p>}
           </FormField>
           <div className="grid grid-cols-2 gap-4">
             <FormField label={so.itemFieldLot}>
@@ -157,6 +194,7 @@ export default function StockOutForm({ mode, inventoryDocId }: Props) {
   const [isDirty, setIsDirty] = useState(false)
   const [itemModal, setItemModal] = useState<{ open: boolean; editing: LocalItem | null }>({ open: false, editing: null })
   const [jsonModalOpen, setJsonModalOpen] = useState(false)
+  const [docTrailOpen, setDocTrailOpen] = useState(false)
 
   const { showConfirm, guardNavigation, confirmLeave, cancelLeave } = useUnsavedChanges(isDirty)
 
@@ -279,6 +317,16 @@ export default function StockOutForm({ mode, inventoryDocId }: Props) {
           </h1>
           {doc?.documentNo && <p className="text-xs text-primary-100 mt-0.5">{doc.documentNo}</p>}
         </div>
+        {mode === 'edit' && doc && inventoryDocId && (
+          <button
+            type="button"
+            onClick={() => setDocTrailOpen(true)}
+            title={t.docAuditTrail.headerBtnTooltip}
+            className="p-2 rounded-lg text-white/80 hover:bg-white/15 hover:text-white transition-colors flex-none"
+          >
+            <History className="w-5 h-5" />
+          </button>
+        )}
         {mode === 'edit' && doc && (
           <button
             type="button"
@@ -307,25 +355,36 @@ export default function StockOutForm({ mode, inventoryDocId }: Props) {
               </div>
               <h3 className="text-sm font-bold text-gray-900">{so.docInfoTitle}</h3>
             </div>
-            <div className="max-w-2xl space-y-4">
-              <FormField label={so.fieldFromLocation} required>
-                <SearchableSelect
-                  options={locationSelectOptions}
-                  value={fromLocationId}
-                  onChange={v => { setFromLocationId(v); markDirty() }}
-                  placeholder={so.fieldFromLocationPlaceholder}
-                  disabled={readOnly}
-                />
-              </FormField>
-              <FormField label={so.fieldDescription}>
-                <textarea
-                  value={description}
-                  onChange={e => { setDescription(e.target.value); markDirty() }}
-                  disabled={readOnly}
-                  rows={2}
-                  className={clsx(inputCls, readOnly && 'bg-gray-50 text-gray-500')}
-                />
-              </FormField>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 max-w-4xl">
+              <div className="space-y-4">
+                <FormField label={so.fieldFromLocation} required>
+                  <SearchableSelect
+                    options={locationSelectOptions}
+                    value={fromLocationId}
+                    onChange={v => { setFromLocationId(v); markDirty() }}
+                    placeholder={so.fieldFromLocationPlaceholder}
+                    disabled={readOnly}
+                  />
+                </FormField>
+                <FormField label={so.fieldDescription}>
+                  <textarea
+                    value={description}
+                    onChange={e => { setDescription(e.target.value); markDirty() }}
+                    disabled={readOnly}
+                    rows={2}
+                    className={clsx(inputCls, readOnly && 'bg-gray-50 text-gray-500')}
+                  />
+                </FormField>
+              </div>
+              <DocNumberPreview
+                mode={mode}
+                documentType="InventoryExport"
+                existingDocNo={doc?.documentNo}
+                existingDate={doc?.createdDate}
+                docNoLabel={so.fieldDocumentNo}
+                dateLabel={so.fieldDocumentDate}
+                hint={so.documentNoPreviewHint}
+              />
             </div>
           </div>
 
@@ -356,12 +415,12 @@ export default function StockOutForm({ mode, inventoryDocId }: Props) {
                     <th className="px-5 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{so.colTotalAmount}</th>
                     <th className="px-5 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{so.colLot}</th>
                     <th className="px-5 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{so.colProject}</th>
-                    {!readOnly && <th className="w-20 px-5 py-2.5" />}
+                    <th className="w-20 px-5 py-2.5" />
                   </tr>
                 </thead>
                 <tbody>
                   {items.length === 0 ? (
-                    <tr><td colSpan={readOnly ? 7 : 8} className="py-10 text-center text-sm text-gray-400">{so.noItems}</td></tr>
+                    <tr><td colSpan={8} className="py-10 text-center text-sm text-gray-400">{so.noItems}</td></tr>
                   ) : items.map((item, idx) => {
                     const highlighted = highlightedKey === item.localKey
                     return (
@@ -375,7 +434,15 @@ export default function StockOutForm({ mode, inventoryDocId }: Props) {
                           : idx % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-50/40 hover:bg-gray-100/50'
                       )}
                     >
-                      <td className="px-5 py-3 font-medium text-gray-800">{item.itemCode || '—'}</td>
+                      <td className="px-5 py-3 font-medium text-gray-800">
+                        <div className="flex items-center gap-1.5">
+                          <ItemImageButton
+                            previewUrl={itemOptions.find(i => i.id === item.itemId)?.previewUrl}
+                            alt={item.itemName || item.itemCode || undefined}
+                          />
+                          <span>{item.itemCode || '—'}</span>
+                        </div>
+                      </td>
                       <td className="px-5 py-3 text-gray-600">{item.itemName || '—'}</td>
                       <td className="px-5 py-3 text-right tabular-nums text-gray-800">{fmtNumber(item.itemQuantity)}</td>
                       <td className="px-5 py-3 text-right tabular-nums text-gray-400 italic">
@@ -388,18 +455,23 @@ export default function StockOutForm({ mode, inventoryDocId }: Props) {
                       <td className="px-5 py-3 text-gray-500">
                         {projectOptions.find(p => p.code === item.project)?.description || item.project || '—'}
                       </td>
-                      {!readOnly && (
-                        <td className="px-5 py-3" onClick={e => e.stopPropagation()}>
-                          <div className="flex items-center gap-1">
-                            <button type="button" onClick={() => handleEditItem(item)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors">
-                              <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                            <button type="button" onClick={() => handleRemoveItem(item.localKey)} className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 transition-colors">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      )}
+                      <td className="px-5 py-3" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-1">
+                          {!readOnly && (
+                            <>
+                              <button type="button" onClick={() => handleEditItem(item)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors">
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button type="button" onClick={() => handleRemoveItem(item.localKey)} className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 transition-colors">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
+                          {mode === 'edit' && item.id && (
+                            <ItemAuditTrailButton rowId={item.id} itemLabel={item.itemCode || item.itemName || undefined} />
+                          )}
+                        </div>
+                      </td>
                     </tr>
                     )
                   })}
@@ -416,6 +488,10 @@ export default function StockOutForm({ mode, inventoryDocId }: Props) {
               </table>
             </div>
           </div>
+
+          {docTrailOpen && inventoryDocId && (
+            <AuditTrailDrawer rowId={inventoryDocId} subtitle={doc?.documentNo ?? undefined} onClose={() => setDocTrailOpen(false)} />
+          )}
         </div>
 
         <div className="flex-none -mx-3 sm:-mx-6 px-4 sm:px-8 py-4 flex items-center justify-end gap-3 bg-white border-t border-gray-100 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
@@ -435,6 +511,7 @@ export default function StockOutForm({ mode, inventoryDocId }: Props) {
           initial={itemModal.editing}
           itemOptions={itemOptions}
           projectOptions={projectOptions}
+          locationId={fromLocationId}
           onSave={handleItemModalSave}
           onClose={() => setItemModal({ open: false, editing: null })}
         />
