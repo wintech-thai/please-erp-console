@@ -127,6 +127,7 @@ export default function ItemLocationTransactionsPage() {
             <tr className="bg-gray-50/70 border-b border-gray-100">
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{it.colLocationCode}</th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{it.colLocationName}</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{it.colItemUnit}</th>
               <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{it.colQuantity}</th>
               <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{it.colAveragePrice}</th>
               <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{it.colValue}</th>
@@ -135,10 +136,11 @@ export default function ItemLocationTransactionsPage() {
           </thead>
           <tbody>
             {pagedWallets.length === 0 ? (
-              <tr><td colSpan={6} className="py-12 text-center text-sm text-gray-400">{it.noData}</td></tr>
+              <tr><td colSpan={7} className="py-12 text-center text-sm text-gray-400">{it.noData}</td></tr>
             ) : pagedWallets.map((w, idx) => {
               const loc = w.inventoryLocationId ? locationById.get(w.inventoryLocationId) : undefined
               const highlighted = highlightedId === w.id
+              const goToHistory = () => loc && router.push(`/business/inventory/transactions/${loc.id}/${itemId}`)
               return (
                 <tr
                   key={w.id}
@@ -152,12 +154,21 @@ export default function ItemLocationTransactionsPage() {
                 >
                   <td className="px-6 py-3 font-medium text-gray-800">{loc?.code || w.inventoryLocationId || '—'}</td>
                   <td className="px-6 py-3 text-gray-600">{loc?.name || '—'}</td>
+                  <td className="px-6 py-3 text-gray-600">{item?.unit || '—'}</td>
                   <td className="px-6 py-3 text-right tabular-nums text-gray-800">{fmtNumber(w.pointQuantityBalanceDecimal)}</td>
                   <td className="px-6 py-3 text-right tabular-nums text-gray-600">{fmtNumber(w.pointAveragePriceDecimal)}</td>
-                  <td className="px-6 py-3 text-right tabular-nums font-semibold text-gray-900">{fmtNumber(w.pointBalanceDecimal)}</td>
                   <td className="px-6 py-3 text-right" onClick={e => e.stopPropagation()}>
                     <button
-                      onClick={() => loc && router.push(`/business/inventory/transactions/${loc.id}/${itemId}`)}
+                      onClick={goToHistory}
+                      disabled={!loc}
+                      className="tabular-nums font-semibold text-gray-900 hover:text-primary-600 hover:underline disabled:opacity-40 disabled:cursor-not-allowed disabled:no-underline disabled:hover:text-gray-900"
+                    >
+                      {fmtNumber(w.pointBalanceDecimal)}
+                    </button>
+                  </td>
+                  <td className="px-6 py-3 text-right" onClick={e => e.stopPropagation()}>
+                    <button
+                      onClick={goToHistory}
                       disabled={!loc}
                       className="inline-flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-800 disabled:opacity-40 disabled:cursor-not-allowed"
                     >

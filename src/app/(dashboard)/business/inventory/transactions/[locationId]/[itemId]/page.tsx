@@ -8,7 +8,7 @@ import clsx from 'clsx'
 import { useLang } from '@/context/LanguageContext'
 import { inventoryLocationApi, type InventoryLocationItem } from '@/lib/api/inventory-location.api'
 import { inventoryItemApi, type InventoryItemItem } from '@/lib/api/inventory-item.api'
-import { pointApi, type InventoryPointTx } from '@/lib/api/point.api'
+import { pointApi, type InventoryPointTx, type InventoryWallet } from '@/lib/api/point.api'
 import { AdvancedTimeRangeSelector, type TimeRangeValue } from '@/components/AdvancedTimeRangeSelector'
 import { useMasterRefOptions } from '@/hooks/useMasterRefOptions'
 
@@ -58,6 +58,7 @@ export default function TransactionHistoryPage() {
 
   const [location, setLocation] = useState<InventoryLocationItem | null>(null)
   const [item, setItem] = useState<InventoryItemItem | null>(null)
+  const [wallet, setWallet] = useState<InventoryWallet | null>(null)
   const { options: locationTypes } = useMasterRefOptions('LocationType')
   const { options: itemTypes } = useMasterRefOptions('ItemType')
   const { options: itemUnits } = useMasterRefOptions('ItemUnit')
@@ -101,7 +102,8 @@ export default function TransactionHistoryPage() {
     Promise.allSettled([
       inventoryLocationApi.getLocationById(locationId),
       inventoryItemApi.getItemById(itemId),
-    ]).then(([locRes, itemRes]) => {
+      pointApi.getWalletsByLocationId(locationId),
+    ]).then(([locRes, itemRes, walletsRes]) => {
       if (cancelled) return
       if (locRes.status === 'fulfilled') {
         const raw = locRes.value.data as unknown
@@ -112,6 +114,9 @@ export default function TransactionHistoryPage() {
         const raw = itemRes.value.data as unknown
         const i = (raw as { inventoryItem?: InventoryItemItem })?.inventoryItem ?? (raw as InventoryItemItem)
         setItem(i?.id ? i : null)
+      }
+      if (walletsRes.status === 'fulfilled' && Array.isArray(walletsRes.value.data)) {
+        setWallet(walletsRes.value.data.find(w => w.inventoryItemId === itemId) ?? null)
       }
       fetchTxs(timeRange)
       setLoading(false)
@@ -159,7 +164,7 @@ export default function TransactionHistoryPage() {
         <h1 className="text-2xl font-bold text-gray-900">{it.txHistoryTitle}</h1>
       </div>
 
-      <div className="flex-none grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+      <div className="flex-none grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
           <div className="flex items-center gap-2 mb-2">
             <span className="w-1 h-4 rounded-full bg-primary-500" />
@@ -202,6 +207,27 @@ export default function TransactionHistoryPage() {
             <div className="col-span-2">
               <p className="text-xs text-gray-400">{it.fieldType}</p>
               <p className="font-medium text-gray-800">{itemTypes.find(o => o.code === item?.itemType)?.description || item?.itemType || '—'}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="w-1 h-4 rounded-full bg-emerald-500" />
+            <h2 className="text-sm font-semibold text-gray-700">{it.balanceTitle}</h2>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div>
+              <p className="text-xs text-gray-400 mb-0.5">{it.colQuantity}</p>
+              <p className="text-lg font-bold text-gray-900 tabular-nums">{fmtNumber(wallet?.pointQuantityBalanceDecimal)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 mb-0.5">{it.colAveragePrice}</p>
+              <p className="text-lg font-bold text-gray-900 tabular-nums">{fmtNumber(wallet?.pointAveragePriceDecimal)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 mb-0.5">{it.colValue}</p>
+              <p className="text-lg font-bold text-emerald-600 tabular-nums">{fmtNumber(wallet?.pointBalanceDecimal)}</p>
             </div>
           </div>
         </div>

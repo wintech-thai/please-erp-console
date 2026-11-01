@@ -105,6 +105,53 @@ function GetDocNumberModal({ config, onClose, onSaved }: { config: DocumentNumbe
   )
 }
 
+// ─── View next doc number modal (preview only, ไม่ increment sequence) ────────
+
+function ViewNextDocModal({ config, onClose }: { config: DocumentNumberConfig | null; onClose: () => void }) {
+  const { t } = useLang()
+  const dn = t.documentNumber
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!config) { setResult(null); return }
+    setLoading(true)
+    documentNumberApi.getNextDocumentNumber(config.documentType)
+      .then(res => setResult((res.data as { documentNumber?: string; DocumentNumber?: string }).documentNumber
+        || (res.data as { documentNumber?: string; DocumentNumber?: string }).DocumentNumber
+        || String(res.data)))
+      .catch(() => { toast.error(dn.viewNextDocError); onClose() })
+      .finally(() => setLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config])
+
+  if (!config) return null
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
+            <FileText className="w-5 h-5 text-amber-600" />
+          </div>
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">{dn.viewNextDocTitle}</h2>
+            <p className="text-xs text-gray-500">{config.documentType}</p>
+          </div>
+        </div>
+        <div className="bg-amber-50 rounded-xl px-5 py-4 text-center mb-3 min-h-[4.5rem] flex items-center justify-center">
+          {loading ? (
+            <div className="w-6 h-6 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
+          ) : (
+            <span className="text-2xl font-bold text-amber-700 font-mono tracking-wider">{result}</span>
+          )}
+        </div>
+        <p className="text-xs text-gray-400 text-center mb-5">{dn.viewNextDocDesc}</p>
+        <button onClick={onClose} className="w-full py-2.5 rounded-xl text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700">{dn.close}</button>
+      </div>
+    </div>
+  )
+}
+
 // ─── Manage sequence modal ────────────────────────────────────────────────────
 
 function ManageSequenceModal({ config, onClose, onSaved }: { config: DocumentNumberConfig | null; onClose: () => void; onSaved: () => void }) {
@@ -185,7 +232,7 @@ function ManageSequenceModal({ config, onClose, onSaved }: { config: DocumentNum
 
 // ─── Action menu ──────────────────────────────────────────────────────────────
 
-function ActionMenu({ onGetDocNumber, onManageSequence }: { onGetDocNumber: () => void; onManageSequence: () => void }) {
+function ActionMenu({ onGetDocNumber, onViewNextDoc, onManageSequence }: { onGetDocNumber: () => void; onViewNextDoc: () => void; onManageSequence: () => void }) {
   const { t } = useLang()
   const dn = t.documentNumber
   const [open, setOpen] = useState(false)
@@ -200,6 +247,7 @@ function ActionMenu({ onGetDocNumber, onManageSequence }: { onGetDocNumber: () =
           <div className="absolute right-0 top-8 z-20 w-48 rounded-xl bg-white shadow-lg border border-gray-100 py-1 overflow-hidden">
             <button onClick={() => { setOpen(false); onGetDocNumber() }} className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-700">{dn.menuGetDoc}</button>
             <button onClick={() => { setOpen(false); onManageSequence() }} className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700">{dn.menuManageSeq}</button>
+            <button onClick={() => { setOpen(false); onViewNextDoc() }} className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-700">{dn.menuViewNextDoc}</button>
           </div>
         </>
       )}
@@ -230,6 +278,7 @@ function DocumentNumberContent() {
     return null
   })
   const [getDocModal, setGetDocModal] = useState<DocumentNumberConfig | null>(null)
+  const [viewNextDocModal, setViewNextDocModal] = useState<DocumentNumberConfig | null>(null)
   const [manageSeqModal, setManageSeqModal] = useState<DocumentNumberConfig | null>(null)
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; config?: DocumentNumberConfig }>({ open: false })
   const [deleting, setDeleting] = useState(false)
@@ -429,6 +478,7 @@ function DocumentNumberContent() {
                     <td className="px-4 py-4 text-center" onClick={e => e.stopPropagation()}>
                       <ActionMenu
                         onGetDocNumber={() => setGetDocModal(cfg)}
+                        onViewNextDoc={() => setViewNextDocModal(cfg)}
                         onManageSequence={() => setManageSeqModal(cfg)}
                       />
                     </td>
@@ -465,6 +515,7 @@ function DocumentNumberContent() {
       </div>
 
       <GetDocNumberModal config={getDocModal} onClose={() => setGetDocModal(null)} onSaved={fetchConfigs} />
+      <ViewNextDocModal config={viewNextDocModal} onClose={() => setViewNextDocModal(null)} />
       <ManageSequenceModal config={manageSeqModal} onClose={() => setManageSeqModal(null)} onSaved={fetchConfigs} />
       {deleteModal.open && (
         <DeleteModal
