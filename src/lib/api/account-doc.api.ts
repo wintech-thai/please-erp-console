@@ -15,6 +15,9 @@ export interface AccountDocItemRow {
   productType?: ProductType | string | null
   productCode?: string | null
   productDesc?: string | null
+  locationId?: string | null
+  locationCode?: string | null
+  locationName?: string | null
   quantity?: number | null
   unitPrice?: number | null
   totalPrice?: number | null

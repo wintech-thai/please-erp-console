@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { AxiosError } from 'axios'
-import { ChevronLeft, Plus, Pencil, Trash2, Receipt, ListChecks, Users, FileJson } from 'lucide-react'
+import { ChevronLeft, Plus, Pencil, Trash2, Receipt, ListChecks, Users, FileJson, History } from 'lucide-react'
 import clsx from 'clsx'
 import { useLang } from '@/context/LanguageContext'
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges'
@@ -12,9 +12,13 @@ import { useMasterRefOptions } from '@/hooks/useMasterRefOptions'
 import LeaveConfirmModal from '@/components/LeaveConfirmModal'
 import JsonViewerModal from '@/components/JsonViewerModal'
 import SearchableSelect from '@/components/SearchableSelect'
+import ItemImageButton from '@/components/ItemImageButton'
+import ItemAuditTrailButton from '@/components/ItemAuditTrailButton'
+import AuditTrailDrawer from '@/components/AuditTrailDrawer'
 import { accountDocApi, type AccountDocItemRow, type AccountDocItem, type ProductType, type ItemDiscountType } from '@/lib/api/account-doc.api'
 import { customerApi, type CustomerItem } from '@/lib/api/customer.api'
 import { inventoryItemApi, type InventoryItemItem } from '@/lib/api/inventory-item.api'
+import { inventoryLocationApi, type InventoryLocationItem } from '@/lib/api/inventory-location.api'
 
 type SaleType = 'cash' | 'credit'
 type LocalItem = AccountDocItemRow & { localKey: string }
@@ -59,10 +63,11 @@ function DocStatusBadge({ status, label }: { status?: string | null; label: stri
 
 // ─── Item modal ────────────────────────────────────────────────────────────────
 
-function ItemModal({ initial, serviceOptions, itemOptions, vatRate, onSave, onClose }: {
+function ItemModal({ initial, serviceOptions, itemOptions, locationOptions, vatRate, onSave, onClose }: {
   initial: LocalItem | null
   serviceOptions: { id: string; code: string; description: string }[]
   itemOptions: InventoryItemItem[]
+  locationOptions: InventoryLocationItem[]
   vatRate: number
   onSave: (item: LocalItem) => void
   onClose: () => void
@@ -73,6 +78,7 @@ function ItemModal({ initial, serviceOptions, itemOptions, vatRate, onSave, onCl
   const [productType, setProductType] = useState<ProductType>((initial?.productType as ProductType) || 'Service')
   const [productId, setProductId] = useState(initial?.productId || '')
   const [customName, setCustomName] = useState(initial?.productDesc || '')
+  const [locationId, setLocationId] = useState(initial?.locationId || '')
   const [quantity, setQuantity] = useState(initial?.quantity?.toString() || '1')
   const [unitPrice, setUnitPrice] = useState(initial?.unitPrice?.toString() || '')
   const [discountType, setDiscountType] = useState<ItemDiscountType>((initial?.itemDiscountType as ItemDiscountType) || 'Amount')
@@ -101,11 +107,16 @@ function ItemModal({ initial, serviceOptions, itemOptions, vatRate, onSave, onCl
     () => itemOptions.map(i => ({ code: i.id, label: i.code, sublabel: i.nameTh })),
     [itemOptions]
   )
+  const locationSelectOptions = useMemo(
+    () => locationOptions.map(l => ({ code: l.id, label: l.name, sublabel: l.code })),
+    [locationOptions]
+  )
 
   function handleTypeChange(type: ProductType) {
     setProductType(type)
     setProductId('')
     if (type !== 'Custom') setCustomName('')
+    if (type !== 'InventoryItem') setLocationId('')
   }
 
   function handleServiceSelect(id: string) {
@@ -129,10 +140,13 @@ function ItemModal({ initial, serviceOptions, itemOptions, vatRate, onSave, onCl
     const qty = parseFloat(quantity)
     if (!qty || qty <= 0 || !customName) { toast.error(sd.itemRequiredFields); return }
     if (productType !== 'Custom' && !productId) { toast.error(sd.itemRequiredFields); return }
+    if (productType === 'InventoryItem' && !locationId) { toast.error(sd.itemRequiredFields); return }
 
     let productCode: string | undefined
     if (productType === 'Service') productCode = serviceOptions.find(s => s.id === productId)?.code
     else if (productType === 'InventoryItem') productCode = itemOptions.find(i => i.id === productId)?.code
+
+    const pickedLocation = productType === 'InventoryItem' ? locationOptions.find(l => l.id === locationId) : undefined
 
     onSave({
       localKey: initial?.localKey || newLocalKey(),
@@ -141,6 +155,9 @@ function ItemModal({ initial, serviceOptions, itemOptions, vatRate, onSave, onCl
       productId: productType === 'Custom' ? undefined : productId,
       productCode,
       productDesc: customName,
+      locationId: productType === 'InventoryItem' ? locationId : undefined,
+      locationCode: pickedLocation?.code,
+      locationName: pickedLocation?.name,
       quantity: qty,
       unitPrice: parseFloat(unitPrice) || 0,
       totalPrice: total,
@@ -178,9 +195,14 @@ function ItemModal({ initial, serviceOptions, itemOptions, vatRate, onSave, onCl
             </FormField>
           )}
           {productType === 'InventoryItem' && (
-            <FormField label={sd.fieldProduct} required>
-              <SearchableSelect options={itemSelectOptions} value={productId} onChange={handleItemSelect} placeholder={sd.fieldProductPlaceholder} />
-            </FormField>
+            <>
+              <FormField label={sd.fieldProduct} required>
+                <SearchableSelect options={itemSelectOptions} value={productId} onChange={handleItemSelect} placeholder={sd.fieldProductPlaceholder} />
+              </FormField>
+              <FormField label={sd.fieldLocation} required>
+                <SearchableSelect options={locationSelectOptions} value={locationId} onChange={setLocationId} placeholder={sd.fieldLocationPlaceholder} />
+              </FormField>
+            </>
           )}
           {productType === 'Custom' && (
             <FormField label={sd.fieldCustomName} required>
@@ -296,6 +318,7 @@ export default function SalesDocForm({ mode, saleType, accountDocId }: Props) {
   const { options: serviceOptions } = useMasterRefOptions('Service')
   const [customers, setCustomers] = useState<CustomerItem[]>([])
   const [itemOptions, setItemOptions] = useState<InventoryItemItem[]>([])
+  const [locationOptions, setLocationOptions] = useState<InventoryLocationItem[]>([])
 
   const [loading, setLoading] = useState(mode === 'edit')
   const [doc, setDoc] = useState<AccountDocItem | null>(null)
@@ -304,7 +327,6 @@ export default function SalesDocForm({ mode, saleType, accountDocId }: Props) {
   const [description, setDescription] = useState('')
   const [dueDate, setDueDate] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('Cash')
-  const [paidAmount, setPaidAmount] = useState('')
   const [vatRate, setVatRate] = useState('0')
   const [items, setItems] = useState<LocalItem[]>([])
   const [saving, setSaving] = useState(false)
@@ -312,6 +334,7 @@ export default function SalesDocForm({ mode, saleType, accountDocId }: Props) {
   const [itemModal, setItemModal] = useState<{ open: boolean; editing: LocalItem | null }>({ open: false, editing: null })
   const [highlightedKey, setHighlightedKey] = useState<string | null>(null)
   const [jsonModalOpen, setJsonModalOpen] = useState(false)
+  const [docTrailOpen, setDocTrailOpen] = useState(false)
 
   const { showConfirm, guardNavigation, confirmLeave, cancelLeave } = useUnsavedChanges(isDirty)
 
@@ -325,6 +348,10 @@ export default function SalesDocForm({ mode, saleType, accountDocId }: Props) {
     inventoryItemApi.getItems({ limit: 100 }).then(res => {
       setItemOptions(Array.isArray(res.data) ? res.data : [])
     }).catch(() => setItemOptions([]))
+    inventoryLocationApi.getLocations({ limit: 100 }).then(res => {
+      const all = Array.isArray(res.data) ? res.data : []
+      setLocationOptions(all.filter(l => l.isSalesWarehouse))
+    }).catch(() => setLocationOptions([]))
   }, [])
 
   useEffect(() => {
@@ -340,7 +367,6 @@ export default function SalesDocForm({ mode, saleType, accountDocId }: Props) {
         setDescription(d.description || '')
         setDueDate(toDateInputValue(d.dueDate))
         setPaymentMethod(d.paymentMethod || 'Cash')
-        setPaidAmount(d.paidAmount != null ? String(d.paidAmount) : '')
         setVatRate(d.vatRate != null ? String(d.vatRate) : '0')
         setItems((d.items || []).map(it => ({ ...it, localKey: newLocalKey() })))
       })
@@ -410,7 +436,6 @@ export default function SalesDocForm({ mode, saleType, accountDocId }: Props) {
       documentDate: documentDate ? new Date(documentDate).toISOString() : undefined,
       dueDate: saleType === 'credit' && dueDate ? new Date(dueDate).toISOString() : undefined,
       paymentMethod: saleType === 'cash' ? paymentMethod : undefined,
-      paidAmount: saleType === 'cash' && paidAmount ? parseFloat(paidAmount) : undefined,
       vatRate: parseFloat(vatRate) || 0,
       items: items.map(({ localKey, ...rest }) => rest),
     }
@@ -464,6 +489,16 @@ export default function SalesDocForm({ mode, saleType, accountDocId }: Props) {
           <h1 className="text-lg font-bold truncate">{mode === 'add' ? tt.createTitle : tt.editTitle}</h1>
           {doc?.documentNo && <p className="text-xs text-primary-100 mt-0.5">{doc.documentNo}</p>}
         </div>
+        {mode === 'edit' && doc && accountDocId && (
+          <button
+            type="button"
+            onClick={() => setDocTrailOpen(true)}
+            title={t.docAuditTrail.headerBtnTooltip}
+            className="p-2 rounded-lg text-white/80 hover:bg-white/15 hover:text-white transition-colors flex-none"
+          >
+            <History className="w-5 h-5" />
+          </button>
+        )}
         {mode === 'edit' && doc && (
           <button
             type="button"
@@ -522,11 +557,6 @@ export default function SalesDocForm({ mode, saleType, accountDocId }: Props) {
                     </FormField>
                   )}
                 </div>
-                {saleType === 'cash' && (
-                  <FormField label={sd.fieldPaidAmount}>
-                    <input type="number" value={paidAmount} onChange={e => { setPaidAmount(e.target.value); markDirty() }} disabled={readOnly} className={clsx(inputCls, readOnly && 'bg-gray-50 text-gray-500')} min={0} step="any" />
-                  </FormField>
-                )}
                 <FormField label={sd.fieldDescription}>
                   <textarea
                     value={description}
@@ -582,17 +612,18 @@ export default function SalesDocForm({ mode, saleType, accountDocId }: Props) {
                   <tr className="bg-gray-50/70 border-b border-gray-100">
                     <th className="px-5 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{sd.colCode}</th>
                     <th className="px-5 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{sd.colName}</th>
+                    <th className="px-5 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{sd.colLocation}</th>
                     <th className="px-5 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{sd.colQuantity}</th>
                     <th className="px-5 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{sd.colUnit}</th>
                     <th className="px-5 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{sd.colUnitPrice}</th>
                     <th className="px-5 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{sd.colDiscount}</th>
                     <th className="px-5 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{sd.colTotalAmount}</th>
-                    {!readOnly && <th className="w-20 px-5 py-2.5" />}
+                    <th className="w-20 px-5 py-2.5" />
                   </tr>
                 </thead>
                 <tbody>
                   {items.length === 0 ? (
-                    <tr><td colSpan={readOnly ? 7 : 8} className="py-10 text-center text-sm text-gray-400">{sd.noItems}</td></tr>
+                    <tr><td colSpan={9} className="py-10 text-center text-sm text-gray-400">{sd.noItems}</td></tr>
                   ) : items.map((item, idx) => {
                     const highlighted = highlightedKey === item.localKey
                     const unit = item.productType === 'InventoryItem'
@@ -610,25 +641,41 @@ export default function SalesDocForm({ mode, saleType, accountDocId }: Props) {
                             : idx % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-50/40 hover:bg-gray-100/50'
                         )}
                       >
-                        <td className="px-5 py-3 text-gray-600">{item.productCode || '—'}</td>
+                        <td className="px-5 py-3 text-gray-600">
+                          <div className="flex items-center gap-1.5">
+                            {item.productType === 'InventoryItem' && (
+                              <ItemImageButton
+                                previewUrl={itemOptions.find(i => i.id === item.productId)?.previewUrl}
+                                alt={item.productDesc || item.productCode || undefined}
+                              />
+                            )}
+                            <span>{item.productCode || '—'}</span>
+                          </div>
+                        </td>
                         <td className="px-5 py-3 font-medium text-gray-800">{item.productDesc || '—'}</td>
+                        <td className="px-5 py-3 text-gray-600">{item.productType === 'InventoryItem' ? (item.locationName || '—') : ''}</td>
                         <td className="px-5 py-3 text-right tabular-nums text-gray-800">{fmtNumber(item.quantity)}</td>
                         <td className="px-5 py-3 text-gray-600">{unit}</td>
                         <td className="px-5 py-3 text-right tabular-nums text-gray-600">{fmtNumber(item.unitPrice)}</td>
                         <td className="px-5 py-3 text-right tabular-nums text-gray-600">{fmtNumber(item.itemDiscountAmount || 0)}</td>
                         <td className="px-5 py-3 text-right tabular-nums font-semibold text-gray-900">{fmtNumber(netAmount)}</td>
-                        {!readOnly && (
-                          <td className="px-5 py-3" onClick={e => e.stopPropagation()}>
-                            <div className="flex items-center gap-1">
-                              <button type="button" onClick={() => handleEditItem(item)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors">
-                                <Pencil className="w-3.5 h-3.5" />
-                              </button>
-                              <button type="button" onClick={() => handleRemoveItem(item.localKey)} className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 transition-colors">
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </td>
-                        )}
+                        <td className="px-5 py-3" onClick={e => e.stopPropagation()}>
+                          <div className="flex items-center gap-1">
+                            {!readOnly && (
+                              <>
+                                <button type="button" onClick={() => handleEditItem(item)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors">
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                                <button type="button" onClick={() => handleRemoveItem(item.localKey)} className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 transition-colors">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </>
+                            )}
+                            {mode === 'edit' && item.id && (
+                              <ItemAuditTrailButton rowId={item.id} itemLabel={item.productCode || item.productDesc || undefined} />
+                            )}
+                          </div>
+                        </td>
                       </tr>
                     )
                   })}
@@ -680,6 +727,7 @@ export default function SalesDocForm({ mode, saleType, accountDocId }: Props) {
           initial={itemModal.editing}
           serviceOptions={serviceOptions}
           itemOptions={itemOptions}
+          locationOptions={locationOptions}
           vatRate={parseFloat(vatRate) || 0}
           onSave={handleItemModalSave}
           onClose={() => setItemModal({ open: false, editing: null })}
@@ -688,6 +736,10 @@ export default function SalesDocForm({ mode, saleType, accountDocId }: Props) {
 
       {jsonModalOpen && doc && (
         <JsonViewerModal data={doc} title={`${t.common.rawJson} — ${doc.documentNo ?? ''}`} onClose={() => setJsonModalOpen(false)} />
+      )}
+
+      {docTrailOpen && accountDocId && (
+        <AuditTrailDrawer rowId={accountDocId} subtitle={doc?.documentNo ?? undefined} onClose={() => setDocTrailOpen(false)} />
       )}
 
       {showConfirm && <LeaveConfirmModal onConfirm={confirmLeave} onCancel={cancelLeave} />}

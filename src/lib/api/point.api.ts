@@ -8,6 +8,7 @@ function getBase() {
 export interface InventoryWallet {
   id: string
   orgId: string
+  refId?: string | null
   walletType?: string | null
   inventoryItemId?: string | null
   inventoryLocationId?: string | null
@@ -16,6 +17,12 @@ export interface InventoryWallet {
   pointAveragePriceDecimal?: number | null
   createdDate?: string | null
   updatedDate?: string | null
+}
+
+export interface GetWalletResponse {
+  status: string
+  description: string
+  wallet?: InventoryWallet
 }
 
 export interface InventoryPointTx {
@@ -54,4 +61,13 @@ export const pointApi = {
 
   getPointTxsByLocationItemId: (locationId: string, itemId: string, payload: GetPointTxsPayload = {}) =>
     client.post<InventoryPointTx[]>(`${getBase()}/GetPointTxsByLocationItemId/${locationId}/${itemId}`, payload),
+
+  getWalletByRefIdAndType: (refId: string, walletType: string) =>
+    client.get<GetWalletResponse>(`${getBase()}/GetWalletByRefIdAndType/${refId}/${walletType}`),
+
+  getWalletBalancesGroupByRefId: (walletType: string) =>
+    client.get<InventoryWallet[]>(`${getBase()}/GetWalletBalancesGroupByRefId/${walletType}`),
+
+  getPointTxsByWalletId: (walletId: string, payload: GetPointTxsPayload = {}) =>
+    client.post<InventoryPointTx[]>(`${getBase()}/GetPointTxsByWalletId/${walletId}`, payload),
 }

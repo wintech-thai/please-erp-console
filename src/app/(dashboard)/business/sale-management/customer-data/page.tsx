@@ -7,7 +7,13 @@ import { Search, Plus, Trash2, Database, ChevronLeft, ChevronRight as ChevronRig
 import clsx from 'clsx'
 import { useLang } from '@/context/LanguageContext'
 import { customerApi, type CustomerItem } from '@/lib/api/customer.api'
+import { pointApi } from '@/lib/api/point.api'
 import { useMasterRefOptions } from '@/hooks/useMasterRefOptions'
+
+function fmtNumber(n?: number | null) {
+  if (n == null) return '—'
+  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
 
 const SS_KEY = 'customer_highlight'
 
@@ -53,6 +59,7 @@ function CustomerDataContent() {
   const { options: customerGroups } = useMasterRefOptions('CustomerGroup')
 
   const [customers, setCustomers] = useState<CustomerItem[]>([])
+  const [arBalances, setArBalances] = useState<Record<string, number>>({})
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(25)
@@ -88,6 +95,15 @@ function CustomerDataContent() {
   useEffect(() => {
     fetchCustomers()
   }, [page, itemsPerPage])
+
+  useEffect(() => {
+    pointApi.getWalletBalancesGroupByRefId('AccountReceivable').then(res => {
+      const list = Array.isArray(res.data) ? res.data : []
+      const map: Record<string, number> = {}
+      for (const w of list) { if (w.refId) map[w.refId] = w.pointBalanceDecimal ?? 0 }
+      setArBalances(map)
+    }).catch(() => setArBalances({}))
+  }, [])
 
   useEffect(() => {
     if (!highlightIdParam) return
@@ -202,19 +218,20 @@ function CustomerDataContent() {
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{cu.colPhone}</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{cu.colType}</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{cu.colGroup}</th>
+                <th className="px-6 py-3.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{cu.colArBalance}</th>
                 <th className="w-28 px-4 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{cu.colAction}</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} className="py-16 text-center">
+                <tr><td colSpan={8} className="py-16 text-center">
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-7 h-7 rounded-full border-2 border-primary-500 border-t-transparent animate-spin" />
                     <span className="text-sm text-gray-400">{t.admin.loading}</span>
                   </div>
                 </td></tr>
               ) : customers.length === 0 ? (
-                <tr><td colSpan={7} className="py-16 text-center">
+                <tr><td colSpan={8} className="py-16 text-center">
                   <Database className="w-7 h-7 mx-auto mb-2 text-gray-300" />
                   <p className="text-sm text-gray-400">{cu.noData}</p>
                 </td></tr>
@@ -255,6 +272,18 @@ function CustomerDataContent() {
                     <td className="px-6 py-4 text-gray-600 whitespace-nowrap">{c.primaryPhone || '—'}</td>
                     <td className="px-6 py-4 text-gray-600">{typeLabel || '—'}</td>
                     <td className="px-6 py-4 text-gray-600">{groupLabel || '—'}</td>
+                    <td className="px-6 py-4 text-right tabular-nums" onClick={e => e.stopPropagation()}>
+                      {arBalances[c.id] ? (
+                        <button
+                          onClick={() => router.push(`/business/sale-management/customer-data/${c.id}/balance-transactions`)}
+                          className="font-semibold text-amber-600 hover:text-amber-800 hover:underline underline-offset-2 transition-colors"
+                        >
+                          {fmtNumber(arBalances[c.id])}
+                        </button>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </td>
                     <td className="px-4 py-4 text-center" onClick={e => e.stopPropagation()}>
                       <button className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors">
                         <MoreHorizontal className="w-4 h-4" />

@@ -20,6 +20,7 @@ export default function AddInventoryLocationPage() {
   const [code, setCode] = useState('')
   const [name, setName] = useState('')
   const [locationType, setLocationType] = useState('')
+  const [isSalesWarehouse, setIsSalesWarehouse] = useState(false)
   const [saving, setSaving] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
   const { showConfirm, guardNavigation, confirmLeave, cancelLeave } = useUnsavedChanges(isDirty)
@@ -31,7 +32,7 @@ export default function AddInventoryLocationPage() {
     if (!code || !name || !locationType) { toast.error(il.requiredFields); return }
     setSaving(true)
     try {
-      const res = await inventoryLocationApi.addLocation({ code, name, locationType })
+      const res = await inventoryLocationApi.addLocation({ code, name, locationType, isSalesWarehouse })
       const body = res.data
       toast.success(il.addSuccess)
       setIsDirty(false)
@@ -98,6 +99,16 @@ export default function AddInventoryLocationPage() {
                   {locationTypes.map(o => <option key={o.code} value={o.code}>{o.description || o.code}</option>)}
                 </select>
               </FormField>
+
+              <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={isSalesWarehouse}
+                  onChange={e => { setIsSalesWarehouse(e.target.checked); markDirty() }}
+                  className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                />
+                <span className="text-sm text-gray-700">{il.fieldIsSalesWarehouse}</span>
+              </label>
             </div>
           </div>
         </div>

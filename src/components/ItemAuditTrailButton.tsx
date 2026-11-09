@@ -23,7 +23,7 @@ export default function ItemAuditTrailButton({ rowId, itemLabel }: Props) {
         type="button"
         onClick={() => setOpen(true)}
         title={t.docAuditTrail.itemTrailTooltip}
-        className="p-1 rounded text-gray-300 hover:text-primary-600 hover:bg-primary-50 transition-colors flex-none"
+        className="p-1 rounded text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-colors flex-none"
       >
         <History className="w-3.5 h-3.5" />
       </button>
