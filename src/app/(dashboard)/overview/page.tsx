@@ -1,17 +1,24 @@
 'use client'
 
+import { useState } from 'react'
+import clsx from 'clsx'
 import { LayoutDashboard } from 'lucide-react'
 import { useLang } from '@/context/LanguageContext'
 import InventoryOverviewSection from '@/components/overview/InventoryOverviewSection'
+import SalesOverviewSection from '@/components/overview/SalesOverviewSection'
 
 function todayLabel(locale: string) {
   return new Date().toLocaleDateString(locale, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 }
 
-// x013 ข้อ 10 : หน้าแรกของระบบ — ตอนนี้มีแค่โมดูลคลัง พอมีโมดูลอื่น (ซื้อ/ขาย) ในอนาคต
-// ให้เพิ่ม section component ของโมดูลนั้นต่อท้ายในนี้ได้เลย
+type OverviewTab = 'inventory' | 'sale'
+
+// x013 ข้อ 10 / x014 ข้อ 7 : หน้าแรกของระบบ — แยกเป็น tab ต่อโมดูล (คลัง/ขาย) เพิ่มโมดูลใหม่
+// ในอนาคตได้โดยสร้าง section component แยกแบบนี้แล้วเพิ่ม tab ใหม่ในนี้
 export default function OverviewPage() {
   const { t, lang } = useLang()
+  const ov = t.overview
+  const [tab, setTab] = useState<OverviewTab>('inventory')
   return (
     <div className="flex-1 overflow-y-auto p-6 sm:p-8">
       <div
@@ -31,7 +38,30 @@ export default function OverviewPage() {
         </div>
       </div>
 
-      <InventoryOverviewSection />
+      <div className="flex-none inline-flex items-center gap-1 p-1 mb-6 bg-gray-100 rounded-xl w-fit">
+        <button
+          type="button"
+          onClick={() => setTab('inventory')}
+          className={clsx(
+            'px-4 py-2 text-sm font-semibold rounded-lg transition-colors',
+            tab === 'inventory' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          )}
+        >
+          {ov.tabInventory}
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab('sale')}
+          className={clsx(
+            'px-4 py-2 text-sm font-semibold rounded-lg transition-colors',
+            tab === 'sale' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          )}
+        >
+          {ov.tabSale}
+        </button>
+      </div>
+
+      {tab === 'inventory' ? <InventoryOverviewSection /> : <SalesOverviewSection />}
     </div>
   )
 }

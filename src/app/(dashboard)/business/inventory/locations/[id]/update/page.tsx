@@ -24,6 +24,7 @@ export default function UpdateInventoryLocationPage() {
   const [code, setCode] = useState('')
   const [name, setName] = useState('')
   const [locationType, setLocationType] = useState('')
+  const [isSalesWarehouse, setIsSalesWarehouse] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
@@ -40,6 +41,7 @@ export default function UpdateInventoryLocationPage() {
         setCode(item.code ?? '')
         setName(item.name ?? '')
         setLocationType(item.locationType ?? '')
+        setIsSalesWarehouse(!!item.isSalesWarehouse)
         setLoading(false)
       } catch (err: unknown) {
         toast.error(err instanceof Error ? err.message : il.loadFailed)
@@ -64,7 +66,7 @@ export default function UpdateInventoryLocationPage() {
 
     setSaving(true)
     try {
-      await inventoryLocationApi.updateLocationById(locationId, { name, locationType })
+      await inventoryLocationApi.updateLocationById(locationId, { name, locationType, isSalesWarehouse })
       toast.success(il.updateSuccess)
       setIsDirty(false)
       router.push(`${listPath}?highlight=${locationId}`)
@@ -125,6 +127,16 @@ export default function UpdateInventoryLocationPage() {
                   {locationTypes.map(o => <option key={o.code} value={o.code}>{o.description || o.code}</option>)}
                 </select>
               </FormField>
+
+              <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={isSalesWarehouse}
+                  onChange={e => { setIsSalesWarehouse(e.target.checked); markDirty() }}
+                  className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                />
+                <span className="text-sm text-gray-700">{il.fieldIsSalesWarehouse}</span>
+              </label>
             </div>
           </div>
         </div>

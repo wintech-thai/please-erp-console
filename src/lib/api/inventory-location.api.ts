@@ -11,6 +11,7 @@ export interface InventoryLocationItem {
   code: string
   name: string
   locationType: string
+  isSalesWarehouse?: boolean | null
   createdDate?: string | null
   updatedDate?: string | null
 }
@@ -32,6 +33,7 @@ export interface SaveInventoryLocationPayload {
   code: string
   name: string
   locationType: string
+  isSalesWarehouse?: boolean
 }
 
 export const inventoryLocationApi = {
