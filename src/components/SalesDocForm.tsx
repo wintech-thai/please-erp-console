@@ -449,12 +449,14 @@ export default function SalesDocForm({ mode, saleType, accountDocId }: Props) {
         setIsDirty(false)
         const newId = res.data.accountDoc?.id
         router.push(newId ? `${basePath}?highlight=${newId}` : basePath)
+        router.refresh()
       } else if (accountDocId) {
         const res = await accountDocApi.updateDocById(accountDocId, payload)
         if (res.data.status !== 'OK') { toast.error(res.data.description || sd.failedToUpdate); return }
         toast.success(sd.updateSuccess)
         setIsDirty(false)
         router.push(`${basePath}?highlight=${accountDocId}`)
+        router.refresh()
       }
     } catch (err) {
       const axiosErr = err as AxiosError
